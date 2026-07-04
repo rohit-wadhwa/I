@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.3.0";
+  const VERSION = "1.3.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -1451,8 +1451,46 @@
   el("about-btn").addEventListener("click", () => el("about").classList.remove("hidden"));
   el("about-close").addEventListener("click", () => el("about").classList.add("hidden"));
 
-  el("version-tag").textContent = "v" + VERSION;
+  el("version-tag").textContent = "v" + VERSION + " ↻";
   el("about-version").textContent = "Version " + VERSION + " · built with vanilla HTML, CSS and JavaScript · deploys anywhere static files go.";
+
+  // ---------- Update checker ----------
+  // The server's version.json is never cached; if it advertises a newer
+  // version than this running script, offer a one-tap refresh that
+  // cache-busts the page (which in turn pulls freshly-versioned assets).
+  const canCheckUpdates = location.protocol === "http:" || location.protocol === "https:";
+
+  function applyUpdate(newVersion) {
+    location.replace(location.pathname + "?v=" + encodeURIComponent(newVersion));
+  }
+
+  async function checkForUpdate(manual, btn) {
+    if (!canCheckUpdates) {
+      if (manual) flashBtn(btn, "n/a here");
+      return;
+    }
+    try {
+      const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+      const data = await res.json();
+      if (data.version && data.version !== VERSION) {
+        if (manual) return applyUpdate(data.version);
+        const pill = el("update-pill");
+        pill.classList.remove("hidden");
+        pill.onclick = () => applyUpdate(data.version);
+      } else if (manual) {
+        flashBtn(btn, "Up to date ✓");
+      }
+    } catch {
+      if (manual) flashBtn(btn, "Check failed");
+    }
+  }
+
+  el("version-tag").addEventListener("click", (e) => checkForUpdate(true, e.currentTarget));
+  checkForUpdate(false);
+  setInterval(() => checkForUpdate(false), 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForUpdate(false);
+  });
 
   // ---------- Menu wiring ----------
   function swatchCSS(d) {
