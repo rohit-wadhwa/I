@@ -37,6 +37,23 @@
     { name: "Ice White",    hue: 210, sat: 15, light: 82 }
   ];
 
+  // Evolution tiers — crossing a length threshold changes size, pace and look.
+  const TIERS = [
+    { name: "Hatchling", at: 0 },
+    { name: "Viper",     at: 40 },
+    { name: "Python",    at: 110 },
+    { name: "Titan",     at: 210 },
+    { name: "Leviathan", at: 340 }
+  ];
+
+  const POWERUP_TYPES = [
+    { key: "overdrive", emoji: "⚡",  hue: 48,  label: "Overdrive" },
+    { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet" },
+    { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield" },
+    { key: "feast",     emoji: "💠", hue: 275, label: "Feast" }
+  ];
+  const MAX_POWERUPS = 7;
+
   // ---------- Canvas / DOM ----------
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
@@ -178,6 +195,10 @@
       this.kills = 0;
       this.boostDrop = 0;
       this.wanderT = 0;
+      this.fx = { overdrive: 0, magnet: 0 };
+      this.shieldCharge = false;
+      this.invuln = 0;
+      this.lastTier = -1;
       this.segs = [];
       for (let i = 0; i < START_LEN; i++) {
         this.segs.push({ x: p.x - Math.cos(this.dir) * i * SEG_SPACING, y: p.y - Math.sin(this.dir) * i * SEG_SPACING });
@@ -185,12 +206,21 @@
     }
 
     get head() { return this.segs[0]; }
-    get radius() { return 5 + Math.pow(this.len, 0.62) * 0.55; }
+    get tier() {
+      let t = 0;
+      for (let i = 1; i < TIERS.length; i++) if (this.len >= TIERS[i].at) t = i;
+      return t;
+    }
+    get radius() { return (5 + Math.pow(this.len, 0.62) * 0.55) * (1 + this.tier * 0.06); }
     get score() { return Math.max(0, Math.floor((this.len - START_LEN) * 10)); }
     get spacing() { return SEG_SPACING + this.radius * 0.18; }
 
     update(dt) {
       if (this.dead) return;
+
+      this.fx.overdrive = Math.max(0, this.fx.overdrive - dt);
+      this.fx.magnet = Math.max(0, this.fx.magnet - dt);
+      this.invuln = Math.max(0, this.invuln - dt);
 
       if (this.isBot) this.think(dt);
 
@@ -201,8 +231,11 @@
       this.dir += clamp(delta, -maxTurn, maxTurn);
 
       // Boost costs mass and leaves a glowing trail of orbs.
-      let speed = BASE_SPEED + Math.min(this.radius, 26) * 0.6;
-      if (this.boosting && this.len > MIN_BOOST_LEN) {
+      // Overdrive gives boost speed for free; each tier adds a little pace.
+      let speed = BASE_SPEED + Math.min(this.radius, 26) * 0.6 + this.tier * 3;
+      if (this.fx.overdrive > 0) {
+        speed = BOOST_SPEED * 1.08;
+      } else if (this.boosting && this.len > MIN_BOOST_LEN) {
         speed = BOOST_SPEED;
         this.len -= BOOST_DRAIN * dt;
         this.boostDrop += dt;
@@ -238,6 +271,18 @@
       }
       while (this.segs.length > targetSegs) this.segs.pop();
 
+      // Evolution: crossing a tier threshold changes size and form.
+      const tierNow = this.tier;
+      if (this.lastTier < 0) {
+        this.lastTier = tierNow;
+      } else if (tierNow !== this.lastTier) {
+        if (tierNow > this.lastTier) {
+          spawnBurst(h.x, h.y, this.hue);
+          if (this === player) showEvolveBanner(TIERS[tierNow].name);
+        }
+        this.lastTier = tierNow;
+      }
+
       // The wall is electrified.
       if (Math.hypot(h.x, h.y) > WORLD_R) this.die("the arena wall");
 
@@ -246,7 +291,7 @@
 
     eat() {
       const h = this.head;
-      const magnet = this.radius * MAGNET_RANGE;
+      const magnet = this.radius * MAGNET_RANGE * (this.fx.magnet > 0 ? 2.6 : 1);
       const near = foodsNear(h.x, h.y, magnet);
       for (const f of near) {
         if (f.dead) continue;
@@ -261,6 +306,16 @@
           const pull = 340 * frameDt / d;
           f.x += (h.x - f.x) * pull * 0.02;
           f.y += (h.y - f.y) * pull * 0.02;
+        }
+      }
+
+      // Power-up pickup.
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        const pu = powerups[i];
+        const pr = this.radius + 16;
+        if (dist2(h.x, h.y, pu.x, pu.y) < pr * pr) {
+          powerups.splice(i, 1);
+          applyPowerup(this, pu);
         }
       }
     }
@@ -309,6 +364,14 @@
         const s = f.value / d;
         if (s > bestScore) { bestScore = s; best = f; }
       }
+      // Power-ups are worth a detour.
+      for (const pu of powerups) {
+        const d2p = dist2(h.x, h.y, pu.x, pu.y);
+        if (d2p < 420 * 420) {
+          const s = 8 / (Math.sqrt(d2p) + 1);
+          if (s > bestScore) { bestScore = s; best = pu; }
+        }
+      }
       if (best) {
         this.targetDir = Math.atan2(best.y - h.y, best.x - h.x);
         this.boosting = false;
@@ -325,6 +388,20 @@
 
     die(cause, killer) {
       if (this.dead) return;
+      // A shield charge cheats death once.
+      if (this.shieldCharge) {
+        this.shieldCharge = false;
+        this.invuln = 2;
+        const h = this.head;
+        const d = Math.hypot(h.x, h.y);
+        if (d > WORLD_R - 30) {
+          const s = (WORLD_R - 80) / d;
+          h.x *= s; h.y *= s;
+          this.dir = this.targetDir = Math.atan2(-h.y, -h.x);
+        }
+        spawnBurst(h.x, h.y, 205);
+        return;
+      }
       this.dead = true;
       if (killer) killer.kills++;
 
@@ -370,6 +447,52 @@
     }
   }
 
+  // ---------- Power-ups ----------
+  const powerups = [];
+  let powerupTimer = 0;
+
+  function spawnPowerup() {
+    const p = randomWorldPoint(300);
+    const type = POWERUP_TYPES[(Math.random() * POWERUP_TYPES.length) | 0];
+    powerups.push({ x: p.x, y: p.y, type, pulse: rand(0, Math.PI * 2) });
+  }
+  function updatePowerups(dt) {
+    powerupTimer -= dt;
+    if (powerupTimer <= 0 && powerups.length < MAX_POWERUPS) {
+      powerupTimer = 4;
+      spawnPowerup();
+    }
+  }
+  function applyPowerup(snake, pu) {
+    const k = pu.type.key;
+    if (k === "overdrive") snake.fx.overdrive = 6;
+    else if (k === "magnet") snake.fx.magnet = 10;
+    else if (k === "shield") snake.shieldCharge = true;
+    else if (k === "feast") snake.len = Math.min(snake.len + 20, 520);
+    spawnBurst(pu.x, pu.y, pu.type.hue);
+  }
+  function drawPowerups(time) {
+    for (const pu of powerups) {
+      const p = worldToScreen(pu.x, pu.y);
+      if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;
+      const pulse = 1 + 0.12 * Math.sin(time * 0.005 + pu.pulse);
+      const R = 16 * cam.zoom * pulse;
+      ctx.save();
+      ctx.strokeStyle = `hsla(${pu.type.hue}, 95%, 65%, 0.9)`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = `hsla(${pu.type.hue}, 95%, 60%, 0.9)`;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = `${Math.max(14, 18 * cam.zoom)}px serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(pu.type.emoji, p.x, p.y + 1);
+      ctx.restore();
+    }
+  }
+
   // ---------- Game state ----------
   let snakes = [];
   let player = null;
@@ -392,6 +515,9 @@
     foodGrid.clear();
     particles.length = 0;
     for (let i = 0; i < FOOD_COUNT; i++) spawnAmbientFood();
+    powerups.length = 0;
+    powerupTimer = 0;
+    for (let i = 0; i < 4; i++) spawnPowerup();
     buildStars();
 
     const name = (el("nickname").value.trim() || "You").slice(0, 14);
@@ -426,7 +552,7 @@
     const score = player.score;
     if (score > (prefs.best || 0)) { prefs.best = score; savePrefs(prefs); }
 
-    el("death-cause").textContent = "You crashed into " + cause + ".";
+    el("death-cause").textContent = "You crashed into " + cause + " as a " + TIERS[player.tier].name + ".";
     el("final-score").textContent = score.toLocaleString();
     el("final-length").textContent = Math.floor(player.len);
     el("final-kills").textContent = player.kills;
@@ -441,7 +567,7 @@
   // ---------- Collisions ----------
   function checkCollisions() {
     for (const s of snakes) {
-      if (s.dead) continue;
+      if (s.dead || s.invuln > 0) continue;
       const h = s.head;
       for (const o of snakes) {
         if (o === s || o.dead) continue;
@@ -581,6 +707,10 @@
   function drawSnake(s, time) {
     const r = s.radius * cam.zoom;
     const light = s.light, sat = s.sat;
+    const tier = s.tier;
+
+    ctx.save();
+    if (s.invuln > 0) ctx.globalAlpha = 0.5 + 0.28 * Math.sin(time * 0.03);
 
     // Body — draw tail-first so the head sits on top.
     for (let i = s.segs.length - 1; i >= 0; i--) {
@@ -605,9 +735,41 @@
       }
     }
 
+    // Titan+ serpents grow fins along the body.
+    if (tier >= 3) {
+      ctx.fillStyle = `hsla(${s.hue}, ${sat}%, ${Math.min(light + 22, 90)}%, 0.5)`;
+      for (let i = 6; i < s.segs.length - 1; i += 6) {
+        const a = s.segs[i - 1], b = s.segs[i];
+        const p = worldToScreen(b.x, b.y);
+        if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
+        const ang = Math.atan2(a.y - b.y, a.x - b.x);
+        const segR = r * (1 - (i / s.segs.length) * 0.35);
+        for (const side of [-1, 1]) {
+          const fa = ang + side * Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(p.x + Math.cos(fa) * segR * 0.7, p.y + Math.sin(fa) * segR * 0.7);
+          ctx.lineTo(p.x + Math.cos(fa) * segR * 1.8, p.y + Math.sin(fa) * segR * 1.8);
+          ctx.lineTo(p.x + Math.cos(fa + 0.5) * segR * 0.7, p.y + Math.sin(fa + 0.5) * segR * 0.7);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
     // Head glow.
     const hp = worldToScreen(s.head.x, s.head.y);
     if (hp.x > -80 && hp.x < W + 80 && hp.y > -80 && hp.y < H + 80) {
+      // Python+ radiate an aura.
+      if (tier >= 2) {
+        const g = ctx.createRadialGradient(hp.x, hp.y, r, hp.x, hp.y, r * 3);
+        g.addColorStop(0, `hsla(${s.hue}, 95%, 65%, 0.28)`);
+        g.addColorStop(1, `hsla(${s.hue}, 95%, 65%, 0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, r * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.save();
       ctx.shadowColor = `hsla(${s.hue}, 95%, 65%, ${s.boosting ? 0.95 : 0.6})`;
       ctx.shadowBlur = s.boosting ? 34 : 18;
@@ -631,12 +793,28 @@
         ctx.fill();
       }
 
-      // Name tag.
+      // Leviathans wear a crown of spikes.
+      if (tier === 4) {
+        ctx.fillStyle = "hsl(48, 95%, 62%)";
+        for (const off of [-0.5, 0, 0.5]) {
+          const a = s.dir + off;
+          ctx.beginPath();
+          ctx.moveTo(hp.x + Math.cos(a - 0.16) * r, hp.y + Math.sin(a - 0.16) * r);
+          ctx.lineTo(hp.x + Math.cos(a) * r * 1.8, hp.y + Math.sin(a) * r * 1.8);
+          ctx.lineTo(hp.x + Math.cos(a + 0.16) * r, hp.y + Math.sin(a + 0.16) * r);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Name tag with tier stars.
       ctx.font = `700 ${Math.max(11, 12 * cam.zoom)}px "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
       ctx.fillStyle = s === player ? "rgba(77,227,255,0.95)" : "rgba(230,236,255,0.75)";
-      ctx.fillText(s.name, hp.x, hp.y - r - 10);
+      ctx.fillText(s.name + (tier > 0 ? " " + "★".repeat(tier) : ""), hp.x, hp.y - r - 10);
     }
+
+    ctx.restore();
   }
 
   function drawParticles() {
@@ -660,6 +838,12 @@
     mctx.stroke();
 
     const scale = (c - 6) / WORLD_R;
+    mctx.fillStyle = "rgba(255, 215, 94, 0.9)";
+    for (const pu of powerups) {
+      mctx.beginPath();
+      mctx.arc(c + pu.x * scale, c + pu.y * scale, 1.6, 0, Math.PI * 2);
+      mctx.fill();
+    }
     for (const s of snakes) {
       if (s.dead) continue;
       const x = c + s.head.x * scale, y = c + s.head.y * scale;
@@ -670,11 +854,28 @@
     }
   }
 
+  function renderEffects() {
+    let html = `<span class="fx-chip tier">${TIERS[player.tier].name}</span>`;
+    if (player.fx.overdrive > 0) html += `<span class="fx-chip">⚡ ${Math.ceil(player.fx.overdrive)}s</span>`;
+    if (player.fx.magnet > 0) html += `<span class="fx-chip">🧲 ${Math.ceil(player.fx.magnet)}s</span>`;
+    if (player.shieldCharge) html += `<span class="fx-chip">🛡️ ready</span>`;
+    el("effects").innerHTML = html;
+  }
+
+  function showEvolveBanner(name) {
+    const b = el("evolve-banner");
+    b.textContent = "EVOLVED · " + name.toUpperCase();
+    b.classList.add("show");
+    clearTimeout(showEvolveBanner._t);
+    showEvolveBanner._t = setTimeout(() => b.classList.remove("show"), 2400);
+  }
+
   let lbTimer = 0;
   function updateLeaderboard(dt) {
     lbTimer -= dt;
     if (lbTimer > 0) return;
     lbTimer = 0.5;
+    renderEffects();
 
     const ranked = snakes.filter(s => !s.dead).sort((a, b) => b.len - a.len);
     const myRank = ranked.indexOf(player) + 1;
@@ -713,8 +914,9 @@
       checkCollisions();
       updateParticles(dt);
 
-      // Keep the arena stocked with orbs.
+      // Keep the arena stocked with orbs and power-ups.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
+      updatePowerups(dt);
 
       // Camera: follow player, zoom out slightly as it grows.
       const targetZoom = clamp(1.15 - player.radius * 0.014, 0.55, 1.05);
@@ -733,6 +935,7 @@
 
     drawBackground(now);
     drawFood(now);
+    drawPowerups(now);
     for (const s of snakes) if (!s.dead) drawSnake(s, now);
     drawParticles();
   }
@@ -785,6 +988,9 @@
     bot.len = rand(20, 60);
     snakes.push(bot);
   }
+  // Tiny handle for automated smoke tests.
+  window.__ns = { get player() { return player; }, get snakes() { return snakes; } };
+
   // Drive the idle scene from the same rAF loop.
   setInterval(() => {
     if (!running && menu && !menu.classList.contains("hidden")) {

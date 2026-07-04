@@ -21,9 +21,34 @@ npx serve .
 
 Boosting is a trade-off: you move ~1.8× faster but burn mass, leaving a trail of orbs behind you that rivals can eat.
 
+## Evolution
+
+Your serpent evolves through 5 forms as it grows, each with a size jump, extra pace and a new look:
+
+| Tier | At length | Look |
+|------|-----------|------|
+| Hatchling | 0 | — |
+| Viper | 40 | ★ rank on name tag |
+| Python | 110 | glowing head aura |
+| Titan | 210 | fins along the body |
+| Leviathan | 340 | golden crown of spikes |
+
+## Power-ups
+
+Glowing rings spawn around the arena — bots hunt them too:
+
+| | Effect |
+|---|--------|
+| ⚡ Overdrive | boost speed for 6s, free (no mass drain) |
+| 🧲 Magnet | 2.6× orb attraction range for 10s |
+| 🛡️ Shield | cheat death once (crash or wall), then 2s of invulnerability |
+| 💠 Feast | instant +20 length |
+
 ## Features
 
 - Circular neon arena with an electrified boundary ring
+- 5-tier evolution system with visual forms and an "EVOLVED" banner
+- Power-up rings (overdrive, magnet, shield, feast) contested by the AI
 - 13 AI serpents with food-seeking, wall-avoidance and body-dodging behavior
 - Boost mechanic that drains mass and drops orbs
 - Head-to-head duels — the bigger serpent wins

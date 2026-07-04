@@ -104,6 +104,53 @@ html, body {
 #leaderboard-list li .lb-score { color: var(--muted); font-variant-numeric: tabular-nums; }
 #leaderboard-list li.me .lb-score { color: var(--accent); }
 
+#effects {
+  position: absolute;
+  top: 96px;
+  left: 16px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 230px;
+}
+
+.fx-chip {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.fx-chip.tier {
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+#evolve-banner {
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  white-space: nowrap;
+  color: #ffd75e;
+  text-shadow: 0 0 24px rgba(255, 215, 94, 0.8);
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+#evolve-banner.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1.05);
+}
+
 #minimap {
   position: absolute;
   bottom: 16px;
