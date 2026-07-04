@@ -26,6 +26,10 @@
     <canvas id="minimap" width="140" height="140"></canvas>
     <div id="boost-hint">Hold <b>Space</b> / click to boost</div>
     <button id="boost-btn" aria-label="Boost">⚡</button>
+    <div id="hud-tools">
+      <button id="shot-btn" title="Save a screenshot">📸</button>
+      <button id="restart-btn" title="Restart run">⟳</button>
+    </div>
   </div>
 
   <!-- Start menu -->
@@ -43,6 +47,12 @@
 
       <button id="play-btn" class="primary-btn">ENTER THE ARENA</button>
 
+      <div class="menu-links">
+        <button id="tutorial-btn" class="ghost-btn small">📖 Tutorial</button>
+        <button id="about-btn" class="ghost-btn small">💡 About</button>
+        <button id="share-game-btn" class="ghost-btn small">📤 Share game</button>
+      </div>
+
       <div class="how-to">
         <div><b>Move</b> — mouse / touch</div>
         <div><b>Boost</b> — hold click, Space or ⚡</div>
@@ -52,6 +62,51 @@
         <div><b>Power-ups</b> — grab the glowing rings</div>
       </div>
       <div id="best-score" class="best"></div>
+
+      <div class="menu-footer">
+        <span id="version-tag"></span>
+        <button id="reset-btn" class="link-btn">Reset progress</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tutorial -->
+  <div id="tutorial" class="overlay top hidden">
+    <div class="menu-card wide">
+      <h2 class="overlay-title">HOW TO PLAY</h2>
+      <div class="tut-step"><span>🖱️</span><div><b>Steer.</b> Your serpent always follows the pointer (or your finger). It never stops moving — plan turns early; big serpents turn slower.</div></div>
+      <div class="tut-step"><span>⚡</span><div><b>Boost.</b> Hold click / Space / the ⚡ button for ~1.8× speed. It burns your length and drops orbs behind you — a trade, not a freebie. You can't boost when tiny.</div></div>
+      <div class="tut-step"><span>🔮</span><div><b>Eat.</b> Orbs are pulled magnetically toward your mouth. The big bright orbs are the remains of dead serpents — worth far more than ambient dust.</div></div>
+      <div class="tut-step"><span>⚔️</span><div><b>Fight.</b> Nobody can touch your body and live. Boost across a rival's path so their head hits your side. Head-on collision? The <b>longer</b> serpent wins — ram small ones, dodge big ones.</div></div>
+      <div class="tut-step"><span>🎁</span><div><b>Power-ups.</b> Grab the glowing rings: ⚡ free boost for 6s · 🧲 huge orb pull for 10s · 🛡️ survive one death · 💠 instant +20 length. Bots want them too.</div></div>
+      <div class="tut-step"><span>🧬</span><div><b>Evolve.</b> At length 40 / 110 / 210 / 340 you change form — bigger, faster, and visibly scarier. A crowned serpent with fins earned it.</div></div>
+      <div class="tut-step"><span>🧱</span><div><b>The wall.</b> The red ring is electrified and kills instantly (only a 🛡️ shield saves you). Never let a fight push you into it.</div></div>
+      <div class="tut-step"><span>🏆</span><div><b>Win.</b> Camp crash sites for orb feasts, encircle smaller serpents to trap them, and check the minimap so a Leviathan never surprises you.</div></div>
+      <button id="tutorial-close" class="primary-btn">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- About / inspiration -->
+  <div id="about" class="overlay top hidden">
+    <div class="menu-card wide">
+      <h2 class="overlay-title">ABOUT THIS GAME</h2>
+      <p class="about-text">
+        <b>Neon Serpent Arena</b> is an original game <b>inspired by snake.io and slither.io</b>.
+        The genre DNA — grow by eating, boost burns mass, head-vs-body kills — comes from those
+        classics. Everything else was rebuilt from scratch in vanilla HTML, CSS and JavaScript.
+      </p>
+      <div class="hud-label about-sub">What's different here</div>
+      <ul class="diff-list">
+        <li><b>Honest AI</b> — named bots with readable logic, not fake "multiplayer" pretending to be humans.</li>
+        <li><b>Circular arena</b> with a lethal electrified wall — no safe edges to hide along.</li>
+        <li><b>Deterministic duels</b> — head-on crashes are won by size, not reaction-time luck.</li>
+        <li><b>Evolution</b> — 5 forms that change your size, speed and look as you grow.</li>
+        <li><b>Contested power-ups</b> — overdrive, magnet, shield and feast, hunted by bots too.</li>
+        <li><b>Magnetic orbs</b>, particle death-bursts, and a parallax neon world.</li>
+        <li><b>100% static &amp; offline</b> — no servers, no ads, no tracking, no downloads. One tiny page.</li>
+      </ul>
+      <p class="about-text small" id="about-version"></p>
+      <button id="about-close" class="primary-btn">CLOSE</button>
     </div>
   </div>
 
@@ -66,7 +121,9 @@
         <div class="stat"><div class="hud-label">Serpents eaten</div><div id="final-kills" class="stat-num">0</div></div>
         <div class="stat"><div class="hud-label">Best rank</div><div id="final-rank" class="stat-num">-</div></div>
       </div>
+      <canvas id="run-chart" width="340" height="110"></canvas>
       <button id="respawn-btn" class="primary-btn">RESPAWN</button>
+      <button id="share-btn" class="ghost-btn accent">📤 SHARE RESULT</button>
       <button id="menu-btn" class="ghost-btn">BACK TO MENU</button>
     </div>
   </div>

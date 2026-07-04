@@ -1,6 +1,8 @@
 # 🐍 Neon Serpent Arena
 
-A fast, glowing, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
+**v1.2.0** — A fast, glowing, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
+
+Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
 ## Play
 
@@ -58,6 +60,11 @@ Glowing rings spawn around the arena — bots hunt them too:
 - Orb magnetism, camera zoom that scales with your size, death-burst particles
 - Full touch support with an on-screen boost button
 - Animated menu background with idle serpents roaming the arena
+- **Sharing** — generate a neon share card (score + run chart + frozen final frame) via the Web Share API, with download/clipboard fallback; in-game 📸 screenshot button with watermark; "Share game" invite link
+- **Run chart** — score-over-time graph on the death screen and share card
+- **In-game tutorial** — 8-step "How to play" overlay covering movement, boosting, combat, power-ups, evolution and tactics
+- **About screen** — credits the snake.io / slither.io inspiration and lists exactly what's different
+- Version tag, mid-run restart button (⟳), and a "Reset progress" option
 
 ## Deploy to Vercel
 

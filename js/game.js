@@ -7,6 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
+  const VERSION = "1.2.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -502,6 +503,9 @@
   let bestRank = 99;
   let stars = [];
   let selectedSkin = clamp(prefs.skin ?? 0, 0, SKINS.length - 1);
+  let scoreHistory = [];      // [seconds, score] samples for the run chart
+  let runStart = 0;
+  let deathSnap = null;       // frozen frame captured at the moment of death
 
   function buildStars() {
     stars = [];
@@ -541,6 +545,8 @@
 
     cam.x = player.head.x; cam.y = player.head.y; cam.zoom = 1;
     bestRank = 99;
+    scoreHistory = [[0, 0]];
+    runStart = performance.now();
     running = true;
     menu.classList.add("hidden");
     deathScreen.classList.add("hidden");
@@ -552,6 +558,12 @@
     const score = player.score;
     if (score > (prefs.best || 0)) { prefs.best = score; savePrefs(prefs); }
 
+    // Freeze the last frame for the share card.
+    scoreHistory.push([(performance.now() - runStart) / 1000, score]);
+    deathSnap = document.createElement("canvas");
+    deathSnap.width = canvas.width; deathSnap.height = canvas.height;
+    deathSnap.getContext("2d").drawImage(canvas, 0, 0);
+
     el("death-cause").textContent = "You crashed into " + cause + " as a " + TIERS[player.tier].name + ".";
     el("final-score").textContent = score.toLocaleString();
     el("final-length").textContent = Math.floor(player.len);
@@ -561,6 +573,7 @@
     setTimeout(() => {
       hud.classList.add("hidden");
       deathScreen.classList.remove("hidden");
+      drawRunChart(el("run-chart"));
     }, 900);
   }
 
@@ -876,6 +889,7 @@
     if (lbTimer > 0) return;
     lbTimer = 0.5;
     renderEffects();
+    scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
 
     const ranked = snakes.filter(s => !s.dead).sort((a, b) => b.len - a.len);
     const myRank = ranked.indexOf(player) + 1;
@@ -940,6 +954,258 @@
     drawParticles();
   }
   requestAnimationFrame(frame);
+
+  // ---------- Sharing ----------
+  const SHARE_URL = () => location.href.split(/[?#]/)[0];
+
+  // Score-over-time line, drawn onto any canvas (death screen + share card).
+  function drawRunChart(target, opts = {}) {
+    const c = target.getContext("2d");
+    const w = target.width, h = target.height;
+    const pad = opts.pad ?? 14;
+    if (!opts.keepBg) c.clearRect(0, 0, w, h);
+
+    const hist = scoreHistory.length > 1 ? scoreHistory : [[0, 0], [1, 0]];
+    const tMax = Math.max(hist[hist.length - 1][0], 1);
+    const sMax = Math.max(...hist.map(p => p[1]), 10);
+    const X = t => pad + (t / tMax) * (w - pad * 2);
+    const Y = s => h - pad - (s / sMax) * (h - pad * 2);
+
+    // Faint horizontal gridlines.
+    c.strokeStyle = "rgba(96, 160, 255, 0.12)";
+    c.lineWidth = 1;
+    for (let i = 1; i <= 3; i++) {
+      const y = pad + ((h - pad * 2) * i) / 4;
+      c.beginPath(); c.moveTo(pad, y); c.lineTo(w - pad, y); c.stroke();
+    }
+
+    // Area fill under the line.
+    c.beginPath();
+    c.moveTo(X(hist[0][0]), Y(hist[0][1]));
+    for (const [t, s] of hist) c.lineTo(X(t), Y(s));
+    c.lineTo(X(tMax), h - pad);
+    c.lineTo(X(hist[0][0]), h - pad);
+    c.closePath();
+    const g = c.createLinearGradient(0, pad, 0, h - pad);
+    g.addColorStop(0, "rgba(77, 227, 255, 0.35)");
+    g.addColorStop(1, "rgba(77, 227, 255, 0.02)");
+    c.fillStyle = g;
+    c.fill();
+
+    // The line itself.
+    c.beginPath();
+    c.moveTo(X(hist[0][0]), Y(hist[0][1]));
+    for (const [t, s] of hist) c.lineTo(X(t), Y(s));
+    c.strokeStyle = "#4de3ff";
+    c.lineWidth = 2;
+    c.shadowColor = "rgba(77, 227, 255, 0.7)";
+    c.shadowBlur = 8;
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Endpoint dot.
+    const last = hist[hist.length - 1];
+    c.fillStyle = "#fff";
+    c.beginPath(); c.arc(X(last[0]), Y(last[1]), 3.5, 0, Math.PI * 2); c.fill();
+
+    // Axis captions.
+    c.fillStyle = "rgba(138, 147, 184, 0.9)";
+    c.font = "10px 'Segoe UI', sans-serif";
+    c.textAlign = "left";
+    c.fillText("score over " + Math.round(tMax) + "s", pad, pad - 3);
+  }
+
+  // A 1200x675 neon card: frozen last frame + stats + the run chart.
+  function buildShareCard() {
+    const cw = 1200, ch = 675;
+    const card = document.createElement("canvas");
+    card.width = cw; card.height = ch;
+    const c = card.getContext("2d");
+
+    c.fillStyle = "#05060f";
+    c.fillRect(0, 0, cw, ch);
+    if (deathSnap) {
+      const s = Math.max(cw / deathSnap.width, ch / deathSnap.height);
+      c.globalAlpha = 0.45;
+      c.drawImage(deathSnap, (cw - deathSnap.width * s) / 2, (ch - deathSnap.height * s) / 2,
+        deathSnap.width * s, deathSnap.height * s);
+      c.globalAlpha = 1;
+    }
+    const vg = c.createRadialGradient(cw / 2, ch / 2, ch * 0.2, cw / 2, ch / 2, ch);
+    vg.addColorStop(0, "rgba(5, 6, 15, 0.15)");
+    vg.addColorStop(1, "rgba(5, 6, 15, 0.92)");
+    c.fillStyle = vg;
+    c.fillRect(0, 0, cw, ch);
+
+    c.textAlign = "left";
+    c.fillStyle = "#e8ecff";
+    c.font = "900 44px 'Segoe UI', sans-serif";
+    c.shadowColor = "rgba(77, 227, 255, 0.6)";
+    c.shadowBlur = 18;
+    c.fillText("NEON SERPENT ARENA", 70, 105);
+    c.shadowBlur = 0;
+    c.font = "600 22px 'Segoe UI', sans-serif";
+    c.fillStyle = "#8a93b8";
+    c.fillText(player.name + " just short-circuited as a " + TIERS[player.tier].name, 70, 145);
+
+    c.fillStyle = "#4de3ff";
+    c.font = "900 130px 'Segoe UI', sans-serif";
+    c.shadowColor = "rgba(77, 227, 255, 0.8)";
+    c.shadowBlur = 30;
+    c.fillText(player.score.toLocaleString(), 70, 330);
+    c.shadowBlur = 0;
+    c.font = "700 20px 'Segoe UI', sans-serif";
+    c.fillStyle = "#8a93b8";
+    c.fillText("FINAL SCORE", 74, 365);
+
+    // Stat chips.
+    const chips = [
+      ["FORM", TIERS[player.tier].name],
+      ["LENGTH", String(Math.floor(player.len))],
+      ["KILLS", String(player.kills)],
+      ["BEST RANK", bestRank === 99 ? "-" : "#" + bestRank]
+    ];
+    let cx = 70;
+    for (const [label, val] of chips) {
+      c.font = "700 26px 'Segoe UI', sans-serif";
+      const wVal = Math.max(c.measureText(val).width, 60);
+      c.fillStyle = "rgba(10, 14, 34, 0.85)";
+      c.strokeStyle = "rgba(96, 160, 255, 0.35)";
+      c.beginPath();
+      c.roundRect(cx, 420, wVal + 44, 86, 14);
+      c.fill(); c.stroke();
+      c.fillStyle = "#8a93b8";
+      c.font = "700 13px 'Segoe UI', sans-serif";
+      c.fillText(label, cx + 22, 452);
+      c.fillStyle = "#e8ecff";
+      c.font = "700 28px 'Segoe UI', sans-serif";
+      c.fillText(val, cx + 22, 488);
+      cx += wVal + 62;
+    }
+
+    // Run chart panel on the right.
+    const chart = document.createElement("canvas");
+    chart.width = 420; chart.height = 240;
+    const cc = chart.getContext("2d");
+    cc.fillStyle = "rgba(10, 14, 34, 0.85)";
+    cc.beginPath(); cc.roundRect(0, 0, 420, 240, 16); cc.fill();
+    cc.strokeStyle = "rgba(96, 160, 255, 0.35)";
+    cc.stroke();
+    drawRunChart(chart, { pad: 30, keepBg: true });
+    c.drawImage(chart, cw - 420 - 70, 175);
+
+    c.fillStyle = "#8a93b8";
+    c.font = "600 20px 'Segoe UI', sans-serif";
+    c.fillText("Think you can outgrow me? Play free in your browser:", 70, 580);
+    c.fillStyle = "#b06bff";
+    c.font = "700 24px 'Segoe UI', sans-serif";
+    c.fillText(SHARE_URL(), 70, 614, cw - 140);
+    c.fillStyle = "rgba(138, 147, 184, 0.6)";
+    c.font = "600 15px 'Segoe UI', sans-serif";
+    c.textAlign = "right";
+    c.fillText("v" + VERSION + " · 🐍 Neon Serpent Arena", cw - 70, 630);
+
+    return card;
+  }
+
+  // Share a canvas as a PNG via the Web Share API, falling back to download.
+  function shareCanvas(cnv, filename, text, btn) {
+    cnv.toBlob(async (blob) => {
+      if (!blob) return flashBtn(btn, "Failed");
+      const file = new File([blob], filename, { type: "image/png" });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Neon Serpent Arena", text });
+          return flashBtn(btn, "Shared!");
+        }
+      } catch (e) {
+        if (e.name === "AbortError") return; // user closed the share sheet
+      }
+      // Fallback: download the image and copy the invite text.
+      try {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        try { await navigator.clipboard.writeText(text); } catch { /* no clipboard */ }
+        flashBtn(btn, "Saved!");
+      } catch {
+        flashBtn(btn, "Blocked by browser");
+      }
+    }, "image/png");
+  }
+
+  function flashBtn(btn, msg) {
+    if (!btn) return;
+    if (btn.dataset.orig === undefined) btn.dataset.orig = btn.textContent;
+    btn.textContent = msg;
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.textContent = btn.dataset.orig; }, 1800);
+  }
+
+  el("share-btn").addEventListener("click", (e) => {
+    const text = `I scored ${player.score.toLocaleString()} as a ${TIERS[player.tier].name} in Neon Serpent Arena 🐍⚡ Beat me here: ${SHARE_URL()}`;
+    shareCanvas(buildShareCard(), `neon-serpent-${player.score}.png`, text, e.currentTarget);
+  });
+
+  el("shot-btn").addEventListener("click", (e) => {
+    // Screenshot = current frame + a small watermark so it promotes the game.
+    const shot = document.createElement("canvas");
+    shot.width = canvas.width; shot.height = canvas.height;
+    const c = shot.getContext("2d");
+    c.drawImage(canvas, 0, 0);
+    c.scale(DPR, DPR);
+    c.fillStyle = "rgba(232, 236, 255, 0.85)";
+    c.font = "700 15px 'Segoe UI', sans-serif";
+    c.textAlign = "left";
+    c.shadowColor = "rgba(0,0,0,0.8)";
+    c.shadowBlur = 6;
+    c.fillText("🐍 NEON SERPENT ARENA · " + (player ? player.score.toLocaleString() + " pts" : ""), 16, H - 14);
+    const text = `Slithering through Neon Serpent Arena 🐍⚡ Join me: ${SHARE_URL()}`;
+    shareCanvas(shot, "neon-serpent-arena.png", text, e.currentTarget);
+  });
+
+  el("share-game-btn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const text = "Neon Serpent Arena 🐍⚡ — a free browser snake arena. Eat orbs, evolve, outplay AI serpents: " + SHARE_URL();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Neon Serpent Arena", text, url: SHARE_URL() });
+        return flashBtn(btn, "Shared!");
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      flashBtn(btn, "Link copied!");
+    } catch {
+      flashBtn(btn, SHARE_URL());
+    }
+  });
+
+  el("restart-btn").addEventListener("click", () => { if (running) startGame(); });
+
+  el("reset-btn").addEventListener("click", (e) => {
+    if (!confirm("Reset saved progress? This clears your best score, name and skin.")) return;
+    for (const k of Object.keys(prefs)) delete prefs[k];
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
+    el("nickname").value = "";
+    selectedSkin = 0;
+    buildSkinPicker();
+    showBest();
+    flashBtn(e.currentTarget, "Progress cleared");
+  });
+
+  // Tutorial / About overlays.
+  el("tutorial-btn").addEventListener("click", () => el("tutorial").classList.remove("hidden"));
+  el("tutorial-close").addEventListener("click", () => el("tutorial").classList.add("hidden"));
+  el("about-btn").addEventListener("click", () => el("about").classList.remove("hidden"));
+  el("about-close").addEventListener("click", () => el("about").classList.add("hidden"));
+
+  el("version-tag").textContent = "v" + VERSION;
+  el("about-version").textContent = "Version " + VERSION + " · built with vanilla HTML, CSS and JavaScript · deploys anywhere static files go.";
 
   // ---------- Menu wiring ----------
   function buildSkinPicker() {
