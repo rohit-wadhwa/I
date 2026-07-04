@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Neon Serpent Arena</title>
+  <meta name="description" content="Neon Serpent Arena — a fast, glowing snake arena game. Eat orbs, outsmart AI serpents, boost past rivals and climb the leaderboard." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD (in-game) -->
+  <div id="hud" class="hidden">
+    <div id="score-panel">
+      <div class="hud-label">Score</div>
+      <div id="score-value">0</div>
+    </div>
+    <div id="leaderboard">
+      <div class="hud-label">Leaderboard</div>
+      <ol id="leaderboard-list"></ol>
+    </div>
+    <canvas id="minimap" width="140" height="140"></canvas>
+    <div id="boost-hint">Hold <b>Space</b> / click to boost</div>
+    <button id="boost-btn" aria-label="Boost">⚡</button>
+  </div>
+
+  <!-- Start menu -->
+  <div id="menu" class="overlay">
+    <div class="menu-card">
+      <h1 class="logo">NEON<span>SERPENT</span></h1>
+      <p class="tagline">Eat orbs. Dodge rivals. Rule the arena.</p>
+
+      <input id="nickname" type="text" maxlength="14" placeholder="Your serpent's name" autocomplete="off" />
+
+      <div class="skin-picker">
+        <div class="hud-label">Choose your glow</div>
+        <div id="skin-list"></div>
+      </div>
+
+      <button id="play-btn" class="primary-btn">ENTER THE ARENA</button>
+
+      <div class="how-to">
+        <div><b>Move</b> — mouse / touch</div>
+        <div><b>Boost</b> — hold click, Space or ⚡</div>
+        <div><b>Grow</b> — eat orbs &amp; fallen serpents</div>
+        <div><b>Die</b> — crash into another serpent</div>
+      </div>
+      <div id="best-score" class="best"></div>
+    </div>
+  </div>
+
+  <!-- Death screen -->
+  <div id="death-screen" class="overlay hidden">
+    <div class="menu-card">
+      <h2 class="death-title">SHORT-CIRCUITED</h2>
+      <p id="death-cause" class="tagline"></p>
+      <div class="stats-grid">
+        <div class="stat"><div class="hud-label">Final score</div><div id="final-score" class="stat-num">0</div></div>
+        <div class="stat"><div class="hud-label">Length</div><div id="final-length" class="stat-num">0</div></div>
+        <div class="stat"><div class="hud-label">Serpents eaten</div><div id="final-kills" class="stat-num">0</div></div>
+        <div class="stat"><div class="hud-label">Best rank</div><div id="final-rank" class="stat-num">-</div></div>
+      </div>
+      <button id="respawn-btn" class="primary-btn">RESPAWN</button>
+      <button id="menu-btn" class="ghost-btn">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <script src="js/game.js"></script>
+</body>
+</html>
