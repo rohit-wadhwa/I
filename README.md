@@ -6,7 +6,9 @@ Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its ow
 
 ## Play
 
-Open `index.html` in any modern browser, or serve the folder:
+**▶ Live: [neon-serpent-arena-game.vercel.app](https://neon-serpent-arena-game.vercel.app/)**
+
+Or open `index.html` in any modern browser, or serve the folder:
 
 ```bash
 npx serve .
