@@ -1,6 +1,6 @@
 # 🐍 Neon Serpent Arena
 
-**v1.2.0** — A fast, glowing, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
+**v1.3.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
@@ -47,6 +47,15 @@ Glowing rings spawn around the arena — bots hunt them too:
 | 🧲 Magnet | 2.6× orb attraction range for 10s |
 | 🛡️ Shield | cheat death once (crash or wall), then 2s of invulnerability |
 | 💠 Feast | instant +20 length |
+
+## Skins, dailies & bosses (v1.3.0)
+
+- **Glossy 3D rendering** — every body segment, head and orb is a pre-rendered specular sphere sprite with soft drop shadows
+- **14-skin collection** — 6 free, 8 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges); locked skins show their unlock condition, and bots model the whole catalog in-game
+- **Daily challenges** — a rotating goal each day (score / kills / orbs eaten) with a progress bar on the menu; completions count toward the Galaxy skin
+- **Boss events** — every couple of minutes a 3-HP boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body three times to defeat it for a mass bonus and the Ember Lord skin
+- **Crown on the leader** — the current #1 serpent wears a golden crown in the arena
+- Kill-counter chip in the HUD; "Skin unlocked" toasts
 
 ## Features
 

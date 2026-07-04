@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.2.0";
+  const VERSION = "1.3.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -29,13 +29,40 @@
     "Nyx", "Quasar", "Tesla", "Boa Vista", "Ion", "Cobalt"
   ];
 
-  const SKINS = [
-    { name: "Cyan Surge",   hue: 190 },
-    { name: "Violet Pulse", hue: 275 },
-    { name: "Toxic Lime",   hue: 105 },
-    { name: "Solar Flare",  hue: 35 },
-    { name: "Hot Magenta",  hue: 320 },
-    { name: "Ice White",    hue: 210, sat: 15, light: 82 }
+  // Skin collection — colors are [hue, sat, light] per body stripe.
+  // Locked skins carry an unlock test evaluated against lifetime stats.
+  const SKIN_DEFS = [
+    { key: "cyan",      name: "Cyan Surge",   colors: [[190, 85, 60]] },
+    { key: "violet",    name: "Violet Pulse", colors: [[275, 85, 60]] },
+    { key: "lime",      name: "Toxic Lime",   colors: [[105, 85, 60]] },
+    { key: "solar",     name: "Solar Flare",  colors: [[35, 90, 60]] },
+    { key: "magenta",   name: "Hot Magenta",  colors: [[320, 85, 60]] },
+    { key: "ice",       name: "Ice White",    colors: [[210, 15, 82]] },
+    { key: "bumblebee", name: "Bumblebee",    colors: [[48, 95, 58], [0, 0, 16]],
+      unlock: { desc: "Earn 5,000 total score", test: s => s.totalScore >= 5000 } },
+    { key: "coral",     name: "Coral Reef",   colors: [[5, 85, 62], [0, 0, 92]],
+      unlock: { desc: "Play 10 games", test: s => s.games >= 10 } },
+    { key: "mint",      name: "Minty Viper",  colors: [[150, 70, 60], [30, 45, 32]],
+      unlock: { desc: "Get 10 total kills", test: s => s.totalKills >= 10 } },
+    { key: "royal",     name: "Royal Guard",  colors: [[275, 80, 55], [48, 95, 58]],
+      unlock: { desc: "Score 2,000 in one run", test: s => s.bestRun >= 2000 } },
+    { key: "prism",     name: "Prism",        colors: [[0, 90, 62]], rainbow: true,
+      unlock: { desc: "Reach Leviathan form", test: s => s.maxTier >= 4 } },
+    { key: "ember",     name: "Ember Lord",   colors: [[0, 90, 55], [25, 95, 55], [45, 95, 58]],
+      unlock: { desc: "Defeat a boss serpent", test: s => s.bossKills >= 1 } },
+    { key: "galaxy",    name: "Galaxy",       colors: [[250, 70, 58], [290, 70, 46], [210, 80, 66]],
+      unlock: { desc: "Complete 3 daily challenges", test: s => s.dailies >= 3 } },
+    { key: "chrome",    name: "Chrome",       colors: [[220, 8, 78], [220, 8, 46]],
+      unlock: { desc: "Get 25 total kills", test: s => s.totalKills >= 25 } }
+  ];
+
+  const BOSS_NAMES = ["OMEGA SERPENT", "VOID WYRM", "INFERNO NAGA", "STORM BASILISK"];
+  const BOSS_SKIN = { colors: [[0, 85, 48], [40, 90, 55]] };
+
+  const DAILY_TYPES = [
+    { desc: t => `Score ${t.toLocaleString()} points today`, target: 3000, measure: "score" },
+    { desc: t => `Get ${t} kills today`, target: 5, measure: "kills" },
+    { desc: t => `Eat ${t} orbs today`, target: 250, measure: "orbs" }
   ];
 
   // Evolution tiers — crossing a length threshold changes size, pace and look.
@@ -107,6 +134,105 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch { /* private mode */ }
   }
   const prefs = loadPrefs();
+  const stats = Object.assign(
+    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0 },
+    prefs.stats
+  );
+  prefs.stats = stats;
+  const unlocked = prefs.unlocked = prefs.unlocked || {};
+  const isUnlocked = (def) => !def.unlock || unlocked[def.key];
+
+  function checkUnlocks() {
+    let newly = false;
+    for (const d of SKIN_DEFS) {
+      if (d.unlock && !unlocked[d.key] && d.unlock.test(stats)) {
+        unlocked[d.key] = true;
+        newly = true;
+        showToast("SKIN UNLOCKED — " + d.name.toUpperCase(), "#4de3ff");
+      }
+    }
+    if (newly) { savePrefs(prefs); buildSkinPicker(); }
+  }
+
+  // ---------- Daily challenge ----------
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function getDaily() {
+    const key = todayKey();
+    if (!prefs.daily || prefs.daily.date !== key) {
+      prefs.daily = { date: key, type: Math.floor(Date.now() / 86400000) % DAILY_TYPES.length, progress: 0, done: false };
+      savePrefs(prefs);
+    }
+    return prefs.daily;
+  }
+  function addDailyProgress(runScore, runKills, runOrbs) {
+    const d = getDaily();
+    if (d.done) return;
+    const t = DAILY_TYPES[d.type];
+    d.progress += t.measure === "score" ? runScore : t.measure === "kills" ? runKills : runOrbs;
+    if (d.progress >= t.target) {
+      d.done = true;
+      stats.dailies++;
+      showToast("DAILY CHALLENGE COMPLETE!", "#ffd75e");
+      checkUnlocks();
+    }
+    savePrefs(prefs);
+    renderDaily();
+  }
+  function renderDaily() {
+    const d = getDaily();
+    const t = DAILY_TYPES[d.type];
+    el("daily-desc").textContent = t.desc(t.target);
+    el("daily-fill").style.width = Math.min(100, (d.progress / t.target) * 100) + "%";
+    el("daily-status").textContent = d.done
+      ? "Complete ✓"
+      : Math.floor(Math.min(d.progress, t.target)).toLocaleString() + " / " + t.target.toLocaleString();
+  }
+
+  // ---------- 3D sphere sprites ----------
+  // Every ball (body segment, head, orb) is a pre-rendered glossy sphere:
+  // radial gradient + specular glint, cached per color. drawImage is far
+  // cheaper than building gradients per segment per frame.
+  const spriteCache = new Map();
+  function getSphereSprite(h, s, l) {
+    const key = h + "," + s + "," + l;
+    let c = spriteCache.get(key);
+    if (c) return c;
+    c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(24, 20, 4, 32, 34, 34);
+    grad.addColorStop(0, `hsl(${h}, ${s}%, ${Math.min(l + 28, 96)}%)`);
+    grad.addColorStop(0.4, `hsl(${h}, ${s}%, ${l}%)`);
+    grad.addColorStop(1, `hsl(${h}, ${s}%, ${Math.max(l - 27, 5)}%)`);
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(32, 32, 31.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255, 255, 255, 0.5)";
+    g.beginPath(); g.ellipse(22, 16, 8, 5, -0.55, 0, Math.PI * 2); g.fill();
+    spriteCache.set(key, c);
+    return c;
+  }
+  let shadowSprite = null;
+  function getShadowSprite() {
+    if (shadowSprite) return shadowSprite;
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, "rgba(0, 0, 0, 0.38)");
+    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    shadowSprite = c;
+    return c;
+  }
+  function segColor(sn, i) {
+    if (sn.skin.rainbow) return [(i * 9) % 360, 90, 60];
+    const cols = sn.skin.colors;
+    return cols[((i / 3) | 0) % cols.length];
+  }
 
   // ---------- Food ----------
   // Spatial hash so eat-checks stay cheap with hundreds of orbs.
@@ -177,12 +303,15 @@
 
   // ---------- Snake ----------
   class Snake {
-    constructor(name, hue, isBot, sat = 85, light = 60) {
+    constructor(name, skin, isBot) {
       this.name = name;
-      this.hue = hue;
-      this.sat = sat;
-      this.light = light;
+      this.skin = skin;
+      const c0 = skin.colors[0];
+      this.hue = c0[0];
+      this.sat = c0[1];
+      this.light = c0[2];
       this.isBot = isBot;
+      this.isBoss = false;
       this.reset();
     }
 
@@ -200,6 +329,7 @@
       this.shieldCharge = false;
       this.invuln = 0;
       this.lastTier = -1;
+      this.orbsEaten = 0;
       this.segs = [];
       for (let i = 0; i < START_LEN; i++) {
         this.segs.push({ x: p.x - Math.cos(this.dir) * i * SEG_SPACING, y: p.y - Math.sin(this.dir) * i * SEG_SPACING });
@@ -212,7 +342,9 @@
       for (let i = 1; i < TIERS.length; i++) if (this.len >= TIERS[i].at) t = i;
       return t;
     }
-    get radius() { return (5 + Math.pow(this.len, 0.62) * 0.55) * (1 + this.tier * 0.06); }
+    get radius() {
+      return (5 + Math.pow(this.len, 0.62) * 0.55) * (1 + this.tier * 0.06) * (this.isBoss ? 1.35 : 1);
+    }
     get score() { return Math.max(0, Math.floor((this.len - START_LEN) * 10)); }
     get spacing() { return SEG_SPACING + this.radius * 0.18; }
 
@@ -279,7 +411,10 @@
       } else if (tierNow !== this.lastTier) {
         if (tierNow > this.lastTier) {
           spawnBurst(h.x, h.y, this.hue);
-          if (this === player) showEvolveBanner(TIERS[tierNow].name);
+          if (this === player) {
+            showEvolveBanner(TIERS[tierNow].name);
+            if (tierNow > stats.maxTier) { stats.maxTier = tierNow; checkUnlocks(); savePrefs(prefs); }
+          }
         }
         this.lastTier = tierNow;
       }
@@ -300,6 +435,7 @@
         const eatR = this.radius + f.r;
         if (d2 < eatR * eatR) {
           this.len = Math.min(this.len + f.value, 520);
+          this.orbsEaten++;
           removeFood(f);
         } else if (d2 < magnet * magnet) {
           // orbs get pulled toward a nearby mouth
@@ -310,7 +446,8 @@
         }
       }
 
-      // Power-up pickup.
+      // Power-up pickup (bosses fear no trinkets and take none).
+      if (this.isBoss) return;
       for (let i = powerups.length - 1; i >= 0; i--) {
         const pu = powerups[i];
         const pr = this.radius + 16;
@@ -325,6 +462,27 @@
     think(dt) {
       const h = this.head;
       this.wanderT -= dt;
+
+      // Bosses ignore food and fear — they hunt the player.
+      if (this.isBoss) {
+        if (Math.hypot(h.x, h.y) > WORLD_R - 320) {
+          this.targetDir = Math.atan2(-h.y, -h.x);
+          this.boosting = false;
+          return;
+        }
+        if (player && !player.dead && running) {
+          const ph = player.head;
+          this.targetDir = Math.atan2(ph.y - h.y, ph.x - h.x);
+          this.boosting = dist2(ph.x, ph.y, h.x, h.y) > 700 * 700 && this.len > 80;
+        } else {
+          if (this.wanderT <= 0) {
+            this.wanderT = rand(1, 2.5);
+            this.targetDir = this.dir + rand(-1, 1);
+          }
+          this.boosting = false;
+        }
+        return;
+      }
 
       // 1) Never hit the wall.
       const dCenter = Math.hypot(h.x, h.y);
@@ -389,6 +547,15 @@
 
     die(cause, killer) {
       if (this.dead) return;
+      // Bosses have hit points: each crash chips one off.
+      if (this.isBoss && this.hp > 1) {
+        this.hp--;
+        this.invuln = 1.6;
+        this.len = Math.max(60, this.len * 0.78);
+        spawnBurst(this.head.x, this.head.y, this.hue);
+        showToast("BOSS HIT — " + this.hp + " HP LEFT", "#ffd75e");
+        return;
+      }
       // A shield charge cheats death once.
       if (this.shieldCharge) {
         this.shieldCharge = false;
@@ -416,6 +583,15 @@
 
       if (this === player) {
         onPlayerDeath(cause);
+      } else if (this.isBoss) {
+        showToast("BOSS DEFEATED!", "#4de3ff");
+        bossTimer = rand(80, 130);
+        if (killer === player) {
+          stats.bossKills++;
+          player.len = Math.min(player.len + 30, 520);
+          checkUnlocks();
+          savePrefs(prefs);
+        }
       } else {
         // Bots respawn fresh after a beat.
         setTimeout(() => { if (snakes.includes(this)) this.reset(); }, rand(1500, 4000));
@@ -446,6 +622,20 @@
       p.x += p.vx * dt; p.y += p.vy * dt;
       p.vx *= 0.92; p.vy *= 0.92;
     }
+  }
+
+  // ---------- Boss events ----------
+  let boss = null;
+  let bossTimer = 55;
+
+  function spawnBoss() {
+    boss = new Snake("☠ " + BOSS_NAMES[(Math.random() * BOSS_NAMES.length) | 0], BOSS_SKIN, true);
+    boss.isBoss = true;
+    boss.hp = 3;
+    boss.maxHp = 3;
+    boss.len = 190;
+    snakes.push(boss);
+    showToast("⚠ " + boss.name.slice(2) + " HAS ENTERED THE ARENA", "#ff4d6d");
   }
 
   // ---------- Power-ups ----------
@@ -502,10 +692,11 @@
   let cam = { x: 0, y: 0, zoom: 1 };
   let bestRank = 99;
   let stars = [];
-  let selectedSkin = clamp(prefs.skin ?? 0, 0, SKINS.length - 1);
+  let selectedSkin = clamp(prefs.skin ?? 0, 0, SKIN_DEFS.length - 1);
   let scoreHistory = [];      // [seconds, score] samples for the run chart
   let runStart = 0;
   let deathSnap = null;       // frozen frame captured at the moment of death
+  let leader = null;          // current #1 by length — wears the crown
 
   function buildStars() {
     stars = [];
@@ -525,12 +716,12 @@
     buildStars();
 
     const name = (el("nickname").value.trim() || "You").slice(0, 14);
+    if (!isUnlocked(SKIN_DEFS[selectedSkin])) selectedSkin = 0;
     prefs.name = name;
     prefs.skin = selectedSkin;
     savePrefs(prefs);
 
-    const skin = SKINS[selectedSkin];
-    player = new Snake(name, skin.hue, false, skin.sat ?? 85, skin.light ?? 60);
+    player = new Snake(name, SKIN_DEFS[selectedSkin], false);
 
     const usedNames = new Set();
     snakes = [player];
@@ -538,10 +729,13 @@
       let bn;
       do { bn = BOT_NAMES[(Math.random() * BOT_NAMES.length) | 0]; } while (usedNames.has(bn));
       usedNames.add(bn);
-      const bot = new Snake(bn, rand(0, 360), true);
+      // Bots wear random skins from the whole collection — a live catalog.
+      const bot = new Snake(bn, SKIN_DEFS[(Math.random() * SKIN_DEFS.length) | 0], true);
       bot.len = rand(START_LEN, 70);   // varied starting sizes
       snakes.push(bot);
     }
+    boss = null;
+    bossTimer = 55;
 
     cam.x = player.head.x; cam.y = player.head.y; cam.zoom = 1;
     bestRank = 99;
@@ -556,7 +750,17 @@
   function onPlayerDeath(cause) {
     running = false;
     const score = player.score;
-    if (score > (prefs.best || 0)) { prefs.best = score; savePrefs(prefs); }
+    if (score > (prefs.best || 0)) prefs.best = score;
+
+    // Lifetime stats drive skin unlocks and the daily challenge.
+    stats.games++;
+    stats.totalScore += score;
+    stats.totalKills += player.kills;
+    stats.bestRun = Math.max(stats.bestRun, score);
+    stats.maxTier = Math.max(stats.maxTier, player.tier);
+    addDailyProgress(score, player.kills, player.orbsEaten);
+    checkUnlocks();
+    savePrefs(prefs);
 
     // Freeze the last frame for the share card.
     scoreHistory.push([(performance.now() - runStart) / 1000, score]);
@@ -714,6 +918,9 @@
       ctx.beginPath();
       ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2);
       ctx.fill();
+      // Glossy 3D core on top of the glow.
+      const hue = Math.round(f.hue / 12) * 12;
+      ctx.drawImage(getSphereSprite(hue, 90, 62), p.x - r, p.y - r, r * 2, r * 2);
     }
   }
 
@@ -725,27 +932,24 @@
     ctx.save();
     if (s.invuln > 0) ctx.globalAlpha = 0.5 + 0.28 * Math.sin(time * 0.03);
 
-    // Body — draw tail-first so the head sits on top.
+    // Soft drop shadows under the body sell the 3D look.
+    const shadow = getShadowSprite();
+    for (let i = s.segs.length - 1; i >= 0; i -= 2) {
+      const seg = s.segs[i];
+      const p = worldToScreen(seg.x, seg.y);
+      if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
+      const segR = r * (1 - (i / s.segs.length) * 0.35) * 1.12;
+      ctx.drawImage(shadow, p.x - segR + r * 0.18, p.y - segR + r * 0.34, segR * 2, segR * 2);
+    }
+
+    // Body — glossy sphere sprites, tail-first so the head sits on top.
     for (let i = s.segs.length - 1; i >= 0; i--) {
       const seg = s.segs[i];
       const p = worldToScreen(seg.x, seg.y);
       if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
-
-      const t = i / s.segs.length;
-      const segR = r * (1 - t * 0.35);
-      const wave = s.boosting ? 8 * Math.sin(time * 0.02 - i * 0.5) : 0;
-      ctx.fillStyle = `hsl(${s.hue + wave}, ${sat}%, ${light - t * 18}%)`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, segR, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Every few segments gets a brighter ring for a scaled look.
-      if (i % 4 === 0) {
-        ctx.fillStyle = `hsla(${s.hue}, ${sat}%, ${Math.min(light + 18, 88)}%, 0.35)`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, segR * 0.62, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      const segR = r * (1 - (i / s.segs.length) * 0.35);
+      const col = segColor(s, i);
+      ctx.drawImage(getSphereSprite(col[0], col[1], col[2]), p.x - segR, p.y - segR, segR * 2, segR * 2);
     }
 
     // Titan+ serpents grow fins along the body.
@@ -784,12 +988,11 @@
       }
 
       ctx.save();
-      ctx.shadowColor = `hsla(${s.hue}, 95%, 65%, ${s.boosting ? 0.95 : 0.6})`;
-      ctx.shadowBlur = s.boosting ? 34 : 18;
-      ctx.fillStyle = `hsl(${s.hue}, ${sat}%, ${Math.min(light + 8, 85)}%)`;
-      ctx.beginPath();
-      ctx.arc(hp.x, hp.y, r * 1.06, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.shadowColor = `hsla(${s.hue}, 95%, 65%, ${s.boosting ? 0.95 : 0.55})`;
+      ctx.shadowBlur = s.boosting ? 34 : 16;
+      const hc = segColor(s, 0);
+      ctx.drawImage(getSphereSprite(hc[0], hc[1], Math.min(hc[2] + 6, 88)),
+        hp.x - r * 1.06, hp.y - r * 1.06, r * 2.12, r * 2.12);
       ctx.restore();
 
       // Eyes track travel direction.
@@ -820,11 +1023,29 @@
         }
       }
 
+      // The arena leader wears a golden crown (bosses bring their own dread).
+      if (s === leader && !s.isBoss) {
+        const cw = Math.max(r * 0.55, 7);
+        const cy = hp.y - r * 1.25;
+        ctx.fillStyle = "#ffd75e";
+        ctx.beginPath();
+        ctx.moveTo(hp.x - cw, cy);
+        ctx.lineTo(hp.x - cw, cy - cw * 0.75);
+        ctx.lineTo(hp.x - cw * 0.45, cy - cw * 0.35);
+        ctx.lineTo(hp.x, cy - cw * 0.95);
+        ctx.lineTo(hp.x + cw * 0.45, cy - cw * 0.35);
+        ctx.lineTo(hp.x + cw, cy - cw * 0.75);
+        ctx.lineTo(hp.x + cw, cy);
+        ctx.closePath();
+        ctx.fill();
+      }
+
       // Name tag with tier stars.
       ctx.font = `700 ${Math.max(11, 12 * cam.zoom)}px "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
-      ctx.fillStyle = s === player ? "rgba(77,227,255,0.95)" : "rgba(230,236,255,0.75)";
-      ctx.fillText(s.name + (tier > 0 ? " " + "★".repeat(tier) : ""), hp.x, hp.y - r - 10);
+      ctx.fillStyle = s.isBoss ? "rgba(255,77,109,0.95)"
+        : s === player ? "rgba(77,227,255,0.95)" : "rgba(230,236,255,0.75)";
+      ctx.fillText(s.name + (tier > 0 && !s.isBoss ? " " + "★".repeat(tier) : ""), hp.x, hp.y - r - (s === leader ? 26 : 10));
     }
 
     ctx.restore();
@@ -860,19 +1081,29 @@
     for (const s of snakes) {
       if (s.dead) continue;
       const x = c + s.head.x * scale, y = c + s.head.y * scale;
-      mctx.fillStyle = s === player ? "#4de3ff" : "rgba(230,236,255,0.45)";
+      mctx.fillStyle = s.isBoss ? "#ff4d6d" : s === player ? "#4de3ff" : "rgba(230,236,255,0.45)";
       mctx.beginPath();
-      mctx.arc(x, y, s === player ? 4 : 2.2, 0, Math.PI * 2);
+      mctx.arc(x, y, s.isBoss ? 3.6 : s === player ? 4 : 2.2, 0, Math.PI * 2);
       mctx.fill();
     }
   }
 
   function renderEffects() {
     let html = `<span class="fx-chip tier">${TIERS[player.tier].name}</span>`;
+    html += `<span class="fx-chip">☠ ${player.kills}</span>`;
     if (player.fx.overdrive > 0) html += `<span class="fx-chip">⚡ ${Math.ceil(player.fx.overdrive)}s</span>`;
     if (player.fx.magnet > 0) html += `<span class="fx-chip">🧲 ${Math.ceil(player.fx.magnet)}s</span>`;
     if (player.shieldCharge) html += `<span class="fx-chip">🛡️ ready</span>`;
     el("effects").innerHTML = html;
+
+    const bb = el("boss-bar");
+    if (boss && !boss.dead) {
+      bb.classList.remove("hidden");
+      bb.innerHTML = `<span class="boss-name">${boss.name}</span>` +
+        `<span class="boss-hp">${"♥".repeat(boss.hp)}<span class="dim">${"♥".repeat(boss.maxHp - boss.hp)}</span></span>`;
+    } else {
+      bb.classList.add("hidden");
+    }
   }
 
   function showEvolveBanner(name) {
@@ -881,6 +1112,15 @@
     b.classList.add("show");
     clearTimeout(showEvolveBanner._t);
     showEvolveBanner._t = setTimeout(() => b.classList.remove("show"), 2400);
+  }
+
+  function showToast(msg, color) {
+    const t = el("toast");
+    t.textContent = msg;
+    t.style.color = color || "#4de3ff";
+    t.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove("show"), 2600);
   }
 
   let lbTimer = 0;
@@ -892,6 +1132,7 @@
     scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
 
     const ranked = snakes.filter(s => !s.dead).sort((a, b) => b.len - a.len);
+    leader = ranked[0] && !ranked[0].isBoss ? ranked[0] : (ranked.find(s => !s.isBoss) || null);
     const myRank = ranked.indexOf(player) + 1;
     if (myRank > 0 && myRank < bestRank) bestRank = myRank;
 
@@ -931,6 +1172,12 @@
       // Keep the arena stocked with orbs and power-ups.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
       updatePowerups(dt);
+
+      // Boss events: one giant hunter at a time, on a cooldown.
+      if (!boss || boss.dead) {
+        bossTimer -= dt;
+        if (bossTimer <= 0) spawnBoss();
+      }
 
       // Camera: follow player, zoom out slightly as it grows.
       const targetZoom = clamp(1.15 - player.radius * 0.014, 0.55, 1.05);
@@ -1208,23 +1455,42 @@
   el("about-version").textContent = "Version " + VERSION + " · built with vanilla HTML, CSS and JavaScript · deploys anywhere static files go.";
 
   // ---------- Menu wiring ----------
+  function swatchCSS(d) {
+    if (d.rainbow) return "conic-gradient(#ff5959, #ffb349, #f6ff54, #61ff61, #4de3ff, #6d6dff, #e061ff, #ff5959)";
+    const cs = d.colors.map(c => `hsl(${c[0]}, ${c[1]}%, ${c[2]}%)`);
+    if (cs.length === 1) {
+      const c = d.colors[0];
+      return `radial-gradient(circle at 35% 35%, hsl(${c[0]}, ${c[1]}%, ${Math.min(c[2] + 20, 90)}%), hsl(${c[0]}, ${c[1]}%, ${Math.max(c[2] - 15, 8)}%))`;
+    }
+    const step = 100 / cs.length;
+    return `linear-gradient(135deg, ${cs.map((c, i) => `${c} ${i * step}% ${(i + 1) * step}%`).join(", ")})`;
+  }
+
   function buildSkinPicker() {
     const list = el("skin-list");
     list.innerHTML = "";
-    SKINS.forEach((skin, i) => {
+    SKIN_DEFS.forEach((d, i) => {
       const b = document.createElement("button");
-      b.className = "skin-swatch" + (i === selectedSkin ? " selected" : "");
-      b.title = skin.name;
-      const h = skin.hue, sVal = skin.sat ?? 85, l = skin.light ?? 60;
-      b.style.background = `radial-gradient(circle at 35% 35%, hsl(${h}, ${sVal}%, ${Math.min(l + 20, 90)}%), hsl(${h}, ${sVal}%, ${l - 15}%))`;
-      b.style.setProperty("--glow", `hsla(${h}, ${sVal}%, 65%, 0.7)`);
+      const open = isUnlocked(d);
+      b.className = "skin-swatch" + (i === selectedSkin ? " selected" : "") + (open ? "" : " locked");
+      b.title = open ? d.name : `${d.name} — ${d.unlock.desc}`;
+      b.style.background = swatchCSS(d);
+      const c0 = d.colors[0];
+      b.style.setProperty("--glow", `hsla(${c0[0]}, ${c0[1]}%, 65%, 0.7)`);
       b.addEventListener("click", () => {
+        if (!isUnlocked(d)) {
+          el("skin-hint").textContent = "🔒 " + d.unlock.desc;
+          return;
+        }
         selectedSkin = i;
+        el("skin-hint").textContent = d.name;
         list.querySelectorAll(".skin-swatch").forEach(x => x.classList.remove("selected"));
         b.classList.add("selected");
       });
       list.appendChild(b);
     });
+    const cur = SKIN_DEFS[selectedSkin];
+    el("skin-hint").textContent = isUnlocked(cur) ? cur.name : "";
   }
 
   function showBest() {
@@ -1240,8 +1506,11 @@
   });
 
   if (prefs.name) el("nickname").value = prefs.name;
+  selectedSkin = clamp(prefs.skin ?? 0, 0, SKIN_DEFS.length - 1);
+  if (!isUnlocked(SKIN_DEFS[selectedSkin])) selectedSkin = 0;
   buildSkinPicker();
   showBest();
+  renderDaily();
 
   // Idle background: a few bots roam the arena behind the menu.
   foods.length = 0;
@@ -1250,12 +1519,18 @@
   buildStars();
   snakes = [];
   for (let i = 0; i < 5; i++) {
-    const bot = new Snake(BOT_NAMES[i], rand(0, 360), true);
+    const bot = new Snake(BOT_NAMES[i], SKIN_DEFS[(Math.random() * SKIN_DEFS.length) | 0], true);
     bot.len = rand(20, 60);
     snakes.push(bot);
   }
   // Tiny handle for automated smoke tests.
-  window.__ns = { get player() { return player; }, get snakes() { return snakes; } };
+  window.__ns = {
+    get player() { return player; },
+    get snakes() { return snakes; },
+    get boss() { return boss; },
+    spawnBoss,
+    stats
+  };
 
   // Drive the idle scene from the same rAF loop.
   setInterval(() => {

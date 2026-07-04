@@ -32,6 +32,8 @@
     </div>
     <div id="effects"></div>
     <div id="evolve-banner"></div>
+    <div id="toast"></div>
+    <div id="boss-bar" class="hidden"></div>
     <div id="leaderboard">
       <div class="hud-label">Leaderboard</div>
       <ol id="leaderboard-list"></ol>
@@ -54,8 +56,18 @@
       <input id="nickname" type="text" maxlength="14" placeholder="Your serpent's name" autocomplete="off" />
 
       <div class="skin-picker">
-        <div class="hud-label">Choose your glow</div>
+        <div class="hud-label">Skin collection</div>
         <div id="skin-list"></div>
+        <div id="skin-hint"></div>
+      </div>
+
+      <div id="daily-card">
+        <div class="daily-head">
+          <span class="hud-label">Daily challenge</span>
+          <span id="daily-status"></span>
+        </div>
+        <div id="daily-desc"></div>
+        <div class="daily-track"><div id="daily-fill"></div></div>
       </div>
 
       <button id="play-btn" class="primary-btn">ENTER THE ARENA</button>
