@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.5.2";
+  const VERSION = "1.5.3";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -996,6 +996,7 @@
     deathScreen.classList.add("hidden");
     hud.classList.remove("hidden");
     hud.classList.toggle("spectate", spectating);
+    el("update-pill").classList.add("hidden");   // never mid-run
     audio.ensure();
     audio.resume();
     audio.click();
@@ -1033,6 +1034,7 @@
       hud.classList.add("hidden");
       deathScreen.classList.remove("hidden");
       drawRunChart(el("run-chart"));
+      maybeShowUpdatePill();   // safe to offer the update between rounds
     }, 900);
   }
 
@@ -1747,6 +1749,7 @@
     showBest();
     renderDaily();
     menu.classList.remove("hidden");
+    maybeShowUpdatePill();
   }
 
   el("restart-btn").addEventListener("click", () => {
@@ -1798,9 +1801,21 @@
   // version than this running script, offer a one-tap refresh that
   // cache-busts the page (which in turn pulls freshly-versioned assets).
   const canCheckUpdates = location.protocol === "http:" || location.protocol === "https:";
+  let pendingUpdate = null;
 
   function applyUpdate(newVersion) {
     location.replace(location.pathname + "?v=" + encodeURIComponent(newVersion));
+  }
+
+  // Updates NEVER interrupt a live run — the pill waits for the death
+  // screen or the menu. (Runs are ephemeral, like every .io game; only
+  // between-round refreshes are offered.)
+  function maybeShowUpdatePill() {
+    if (!pendingUpdate) return;
+    if (running && !spectating && player && !player.dead) return;
+    const pill = el("update-pill");
+    pill.classList.remove("hidden");
+    pill.onclick = () => applyUpdate(pendingUpdate);
   }
 
   async function checkForUpdate(manual, btn) {
@@ -1813,9 +1828,8 @@
       const data = await res.json();
       if (data.version && data.version !== VERSION) {
         if (manual) return applyUpdate(data.version);
-        const pill = el("update-pill");
-        pill.classList.remove("hidden");
-        pill.onclick = () => applyUpdate(data.version);
+        pendingUpdate = data.version;
+        maybeShowUpdatePill();
       } else if (manual) {
         flashBtn(btn, "Up to date ✓");
       }
@@ -1823,6 +1837,14 @@
       if (manual) flashBtn(btn, "Check failed");
     }
   }
+
+  // Guard a live run against accidental refresh / tab close.
+  window.addEventListener("beforeunload", (e) => {
+    if (running && !spectating && player && !player.dead) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
 
   el("version-tag").addEventListener("click", (e) => checkForUpdate(true, e.currentTarget));
   checkForUpdate(false);
