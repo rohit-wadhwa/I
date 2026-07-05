@@ -350,12 +350,16 @@ html, body {
 body.touch #boost-btn { display: flex; }
 body.touch #boost-hint { display: none; }
 
-#spectate-exit {
+#spectate-bar {
   position: absolute;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   display: none;
+  gap: 10px;
+}
+
+#spectate-bar button {
   padding: 13px 26px;
   font-size: 13px;
   font-weight: 800;
@@ -371,9 +375,15 @@ body.touch #boost-hint { display: none; }
   -webkit-tap-highlight-color: transparent;
 }
 
-#spectate-exit:active { background: rgba(207, 227, 255, 0.25); }
+#spectate-play {
+  color: #04121a !important;
+  background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+  border-color: transparent !important;
+}
 
-#hud.spectate #spectate-exit { display: block; }
+#spectate-bar button:active { filter: brightness(1.15); }
+
+#hud.spectate #spectate-bar { display: flex; }
 #hud.spectate #boost-hint,
 #hud.spectate #boost-btn,
 #hud.spectate #effects { display: none; }
@@ -759,7 +769,8 @@ body.touch #boost-hint { display: none; }
   #hud-tools button { width: 54px; height: 54px; font-size: 23px; }
   #boost-btn { width: 96px; height: 96px; font-size: 40px; bottom: 40px; left: 36px; }
   #boost-hint { font-size: 15px; }
-  #spectate-exit { font-size: 16px; padding: 16px 34px; bottom: 34px; }
+  #spectate-bar { bottom: 34px; }
+  #spectate-bar button { font-size: 16px; padding: 16px 34px; }
   #boss-bar { top: 84px; padding: 10px 24px; }
   .boss-name { font-size: 16px; }
   .boss-hp { font-size: 19px; }

@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.8.1";
+  const VERSION = "1.9.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -1907,12 +1907,52 @@
     else startGame();
   });
   el("spectate-btn").addEventListener("click", () => startGame(true));
-  // Dedicated ghost-mode exit — big, obvious, touch-friendly.
-  el("spectate-exit").addEventListener("click", () => { if (spectating) exitToMenu(); });
-  el("spectate-exit").addEventListener("touchend", (e) => {
-    e.preventDefault();
-    if (spectating) exitToMenu();
-  }, { passive: false });
+
+  // Watch the arena after dying — keep the same live world, no respawn yet.
+  function watchArena() {
+    const corpse = player;
+    if (corpse) snakes = snakes.filter(s => s !== corpse);   // drop only our body
+    player = null;
+    spectating = true;
+    paused = false;
+    running = true;
+    deathScreen.classList.add("hidden");
+    hud.classList.remove("hidden");
+    hud.classList.add("spectate");
+    el("update-pill").classList.add("hidden");
+  }
+
+  // Jump into the arena you're watching — a fresh serpent in the SAME world.
+  function respawnIntoArena() {
+    const name = (el("nickname").value.trim() || prefs.name || "You").slice(0, 14);
+    if (!isUnlocked(SKIN_DEFS[selectedSkin])) selectedSkin = 0;
+    player = new Snake(name, SKIN_DEFS[selectedSkin], false);
+    snakes.push(player);
+    spectating = false;
+    paused = false;
+    bestRank = 99;
+    scoreHistory = [[0, 0]];
+    runStart = performance.now();
+    running = true;
+    cam.x = player.head.x; cam.y = player.head.y;
+    deathScreen.classList.add("hidden");
+    menu.classList.add("hidden");
+    hud.classList.remove("hidden", "spectate");
+    el("update-pill").classList.add("hidden");
+    showToast("✨ SPAWN GHOST — 3s OF SAFETY", "#cfe3ff");
+    audio.ensure(); audio.resume(); audio.click();
+  }
+
+  el("watch-btn").addEventListener("click", watchArena);
+
+  // Ghost-mode bottom bar: jump in (respawn into this world) / exit to menu.
+  const bindTap = (id, fn) => {
+    const b = el(id);
+    b.addEventListener("click", fn);
+    b.addEventListener("touchend", (e) => { e.preventDefault(); fn(); }, { passive: false });
+  };
+  bindTap("spectate-play", () => { if (spectating) respawnIntoArena(); });
+  bindTap("spectate-exit", () => { if (spectating) exitToMenu(); });
 
   // Sound: lazy-init on first gesture; mute toggles in HUD, menu and via M key.
   window.addEventListener("pointerdown", () => { audio.ensure(); audio.resume(); }, { once: true });
