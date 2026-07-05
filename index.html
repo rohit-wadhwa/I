@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=1.4.0" />
+  <link rel="stylesheet" href="css/style.css?v=1.5.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -43,9 +43,10 @@
     <button id="boost-btn" aria-label="Boost">⚡</button>
     <div id="hud-tools">
       <button id="shot-btn" title="Save a screenshot">📸</button>
-      <button id="restart-btn" title="Restart run">⟳</button>
+      <button id="restart-btn" title="Restart run / exit ghost mode">⟳</button>
       <button id="mute-btn" title="Toggle sound (M)">🔊</button>
     </div>
+    <div id="spectate-tag">👁 GHOST MODE — watching the arena · tap ⟳ to exit</div>
   </div>
 
   <!-- Start menu -->
@@ -72,6 +73,7 @@
       </div>
 
       <button id="play-btn" class="primary-btn">ENTER THE ARENA</button>
+      <button id="spectate-btn" class="ghost-btn">👁 GHOST MODE — WATCH THE ARENA</button>
 
       <div class="menu-links">
         <button id="tutorial-btn" class="ghost-btn small">📖 Tutorial</button>
@@ -87,6 +89,8 @@
         <div><b>Die</b> — crash into another serpent</div>
         <div><b>Evolve</b> — grow through 5 forms</div>
         <div><b>Power-ups</b> — grab the glowing rings</div>
+        <div><b>Bosses</b> — bait them 3× to slay</div>
+        <div><b>Phantom</b> — avoid it, it drains you</div>
       </div>
       <div id="best-score" class="best"></div>
 
@@ -107,6 +111,8 @@
       <div class="tut-step"><span>⚔️</span><div><b>Fight.</b> Nobody can touch your body and live. Boost across a rival's path so their head hits your side. Head-on collision? The <b>longer</b> serpent wins — ram small ones, dodge big ones.</div></div>
       <div class="tut-step"><span>🎁</span><div><b>Power-ups.</b> Grab the glowing rings: ⚡ free boost for 6s · 🧲 huge orb pull for 10s · 🛡️ survive one death · 💠 instant +20 length. Bots want them too.</div></div>
       <div class="tut-step"><span>🧬</span><div><b>Evolve.</b> At length 40 / 110 / 210 / 340 you change form — bigger, faster, and visibly scarier. A crowned serpent with fins earned it.</div></div>
+      <div class="tut-step"><span>👹</span><div><b>Bosses.</b> Every couple of minutes a 3-HP boss serpent invades and hunts you. Bait it into crashing into your body three times — victory pays mass and a rare skin.</div></div>
+      <div class="tut-step"><span>👻</span><div><b>The Phantom.</b> Sometimes a ghost serpent haunts the arena for ~25s. It can't be killed and bodies pass through it — but its touch <b>drains your length</b>. Keep your distance until it fades.</div></div>
       <div class="tut-step"><span>🧱</span><div><b>The wall.</b> The red ring is electrified and kills instantly (only a 🛡️ shield saves you). Never let a fight push you into it.</div></div>
       <div class="tut-step"><span>🏆</span><div><b>Win.</b> Camp crash sites for orb feasts, encircle smaller serpents to trap them, and check the minimap so a Leviathan never surprises you.</div></div>
       <button id="tutorial-close" class="primary-btn">GOT IT</button>
@@ -157,6 +163,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=1.4.0"></script>
+  <script src="js/game.js?v=1.5.0"></script>
 </body>
 </html>

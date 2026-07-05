@@ -296,6 +296,23 @@ html, body {
 body.touch #boost-btn { display: flex; }
 body.touch #boost-hint { display: none; }
 
+#spectate-tag {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #cfe3ff;
+  text-shadow: 0 0 10px rgba(207, 227, 255, 0.4);
+}
+
+#hud.spectate #spectate-tag { display: block; }
+#hud.spectate #boost-hint,
+#hud.spectate #boost-btn,
+#hud.spectate #effects { display: none; }
+
 #hud-tools {
   position: absolute;
   top: 16px;

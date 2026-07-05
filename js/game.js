@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.4.0";
+  const VERSION = "1.5.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -307,6 +307,17 @@
     bossDown() {
       [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.2, { type: "triangle", vol: 0.16, delay: i * 0.11 }));
     },
+    phantomSpawn() {
+      this.tone(220, 1.1, { type: "sine", vol: 0.12 });
+      this.tone(233, 1.1, { type: "sine", vol: 0.12, delay: 0.06 });
+      this.tone(110, 1.4, { type: "sine", vol: 0.1, delay: 0.12 });
+    },
+    drain() {
+      const now = performance.now();
+      if (now - (this._lastDrain || 0) < 220) return;
+      this._lastDrain = now;
+      this.tone(190, 0.12, { type: "sawtooth", vol: 0.07, slide: -60 });
+    },
     unlock() {
       [1047, 1568].forEach((f, i) => this.tone(f, 0.18, { type: "sine", vol: 0.15, delay: i * 0.09 }));
     },
@@ -406,10 +417,11 @@
   }
   function spawnAmbientFood() {
     const p = randomWorldPoint(60);
+    const r = rand(3.5, 6.5);
     addFood({
       x: p.x, y: p.y,
-      r: rand(3.5, 6.5),
-      value: 1,
+      r,
+      value: 0.55 + r * 0.12,   // bigger dots are worth more
       hue: rand(0, 360),
       pulse: rand(0, Math.PI * 2)
     });
@@ -462,6 +474,7 @@
       this.invuln = 0;
       this.lastTier = -1;
       this.orbsEaten = 0;
+      this.speedMul = this.speedMul || 1;
       this.segs = [];
       for (let i = 0; i < START_LEN; i++) {
         this.segs.push({ x: p.x - Math.cos(this.dir) * i * SEG_SPACING, y: p.y - Math.sin(this.dir) * i * SEG_SPACING });
@@ -511,6 +524,8 @@
         }
       }
 
+      speed *= this.speedMul;
+
       // Move head, then let every segment chase the one in front of it.
       const h = this.head;
       h.x += Math.cos(this.dir) * speed * dt;
@@ -559,6 +574,7 @@
     }
 
     eat() {
+      if (this.phantom) return;   // ghosts don't feed
       const h = this.head;
       const magnet = this.radius * MAGNET_RANGE * (this.fx.magnet > 0 ? 2.6 : 1);
       const near = foodsNear(h.x, h.y, magnet);
@@ -580,8 +596,8 @@
         }
       }
 
-      // Power-up pickup (bosses fear no trinkets and take none).
-      if (this.isBoss) return;
+      // Power-up pickup (bosses and phantoms take none).
+      if (this.isBoss || this.phantom) return;
       for (let i = powerups.length - 1; i >= 0; i--) {
         const pu = powerups[i];
         const pr = this.radius + 16;
@@ -596,6 +612,23 @@
     think(dt) {
       const h = this.head;
       this.wanderT -= dt;
+
+      // The phantom slowly stalks the nearest living serpent.
+      if (this.phantom) {
+        if (Math.hypot(h.x, h.y) > WORLD_R - 300) {
+          this.targetDir = Math.atan2(-h.y, -h.x);
+          return;
+        }
+        let near = null, nd = Infinity;
+        for (const s of snakes) {
+          if (s === this || s.dead || s.phantom || s.isBoss) continue;
+          const d2p = dist2(h.x, h.y, s.head.x, s.head.y);
+          if (d2p < nd) { nd = d2p; near = s; }
+        }
+        if (near) this.targetDir = Math.atan2(near.head.y - h.y, near.head.x - h.x);
+        this.boosting = false;
+        return;
+      }
 
       // Bosses ignore food and fear — they hunt the player.
       if (this.isBoss) {
@@ -681,6 +714,12 @@
 
     die(cause, killer) {
       if (this.dead) return;
+      // Phantoms fade without a feast.
+      if (this.phantom) {
+        this.dead = true;
+        spawnBurst(this.head.x, this.head.y, 210);
+        return;
+      }
       // Bosses have hit points: each crash chips one off.
       if (this.isBoss && this.hp > 1) {
         this.hp--;
@@ -778,6 +817,41 @@
     audio.bossSpawn();
   }
 
+  // ---------- Phantom haunting ----------
+  // A spectral serpent that can't be fought — only avoided. Its touch
+  // drains length. It fades away on its own after ~25 seconds.
+  const PHANTOM_SKIN = { colors: [[210, 30, 86]] };
+  let phantom = null;
+  let phantomTimer = 90;
+  let phantomLife = 0;
+
+  function spawnPhantom() {
+    phantom = new Snake("👻 PHANTOM", PHANTOM_SKIN, true);
+    phantom.phantom = true;
+    phantom.speedMul = 0.82;
+    phantom.len = 80;
+    phantomLife = 25;
+    snakes.push(phantom);
+    showToast("👻 A PHANTOM HAUNTS THE ARENA — AVOID ITS TOUCH", "#cfe3ff");
+    audio.phantomSpawn();
+  }
+
+  function drainNearPhantom(dt) {
+    for (const s of snakes) {
+      if (s.dead || s.phantom || s.isBoss) continue;
+      const h = s.head;
+      const rr = (s.radius + phantom.radius) ** 2;
+      for (let i = 0; i < phantom.segs.length; i += 2) {
+        const seg = phantom.segs[i];
+        if (dist2(h.x, h.y, seg.x, seg.y) < rr) {
+          s.len = Math.max(START_LEN, s.len - 14 * dt);
+          if (s === player) audio.drain();
+          break;
+        }
+      }
+    }
+  }
+
   // ---------- Power-ups ----------
   const powerups = [];
   let powerupTimer = 0;
@@ -829,6 +903,7 @@
   let snakes = [];
   let player = null;
   let running = false;
+  let spectating = false;
   let frameDt = 0.016;
   let cam = { x: 0, y: 0, zoom: 1 };
   let bestRank = 99;
@@ -846,7 +921,8 @@
     }
   }
 
-  function startGame() {
+  function startGame(spectate) {
+    spectating = spectate === true;   // guard: play-btn passes a click Event here
     foods.length = 0;
     foodGrid.clear();
     particles.length = 0;
@@ -856,16 +932,19 @@
     for (let i = 0; i < 4; i++) spawnPowerup();
     buildStars();
 
-    const name = (el("nickname").value.trim() || "You").slice(0, 14);
-    if (!isUnlocked(SKIN_DEFS[selectedSkin])) selectedSkin = 0;
-    prefs.name = name;
-    prefs.skin = selectedSkin;
-    savePrefs(prefs);
-
-    player = new Snake(name, SKIN_DEFS[selectedSkin], false);
+    if (spectating) {
+      player = null;
+    } else {
+      const name = (el("nickname").value.trim() || "You").slice(0, 14);
+      if (!isUnlocked(SKIN_DEFS[selectedSkin])) selectedSkin = 0;
+      prefs.name = name;
+      prefs.skin = selectedSkin;
+      savePrefs(prefs);
+      player = new Snake(name, SKIN_DEFS[selectedSkin], false);
+    }
 
     const usedNames = new Set();
-    snakes = [player];
+    snakes = player ? [player] : [];
     for (let i = 0; i < BOT_COUNT; i++) {
       let bn;
       do { bn = BOT_NAMES[(Math.random() * BOT_NAMES.length) | 0]; } while (usedNames.has(bn));
@@ -876,9 +955,13 @@
       snakes.push(bot);
     }
     boss = null;
-    bossTimer = 55;
+    bossTimer = spectating ? 20 : 55;
+    phantom = null;
+    phantomTimer = spectating ? 50 : 90;
 
-    cam.x = player.head.x; cam.y = player.head.y; cam.zoom = 1;
+    const f0 = player ? player.head : { x: 0, y: 0 };
+    cam.x = f0.x; cam.y = f0.y; cam.zoom = spectating ? 0.8 : 1;
+    leader = null;
     bestRank = 99;
     scoreHistory = [[0, 0]];
     runStart = performance.now();
@@ -886,6 +969,7 @@
     menu.classList.add("hidden");
     deathScreen.classList.add("hidden");
     hud.classList.remove("hidden");
+    hud.classList.toggle("spectate", spectating);
     audio.ensure();
     audio.resume();
     audio.click();
@@ -929,10 +1013,10 @@
   // ---------- Collisions ----------
   function checkCollisions() {
     for (const s of snakes) {
-      if (s.dead || s.invuln > 0) continue;
+      if (s.dead || s.invuln > 0 || s.phantom) continue;
       const h = s.head;
       for (const o of snakes) {
-        if (o === s || o.dead) continue;
+        if (o === s || o.dead || o.phantom) continue;
         // Skip the few segments right behind the other head only for
         // head-on cases — body checks start from segment 2.
         const rr = (s.radius + o.radius * 0.9) ** 2;
@@ -1076,10 +1160,11 @@
 
     ctx.save();
     if (s.invuln > 0) ctx.globalAlpha = 0.5 + 0.28 * Math.sin(time * 0.03);
+    if (s.phantom) ctx.globalAlpha = 0.38 + 0.08 * Math.sin(time * 0.004);
 
-    // Soft drop shadows under the body sell the 3D look.
+    // Soft drop shadows under the body sell the 3D look (ghosts cast none).
     const shadow = getShadowSprite();
-    for (let i = s.segs.length - 1; i >= 0; i -= 2) {
+    if (!s.phantom) for (let i = s.segs.length - 1; i >= 0; i -= 2) {
       const seg = s.segs[i];
       const p = worldToScreen(seg.x, seg.y);
       if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
@@ -1189,8 +1274,9 @@
       ctx.font = `700 ${Math.max(11, 12 * cam.zoom)}px "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
       ctx.fillStyle = s.isBoss ? "rgba(255,77,109,0.95)"
+        : s.phantom ? "rgba(207,227,255,0.9)"
         : s === player ? "rgba(77,227,255,0.95)" : "rgba(230,236,255,0.75)";
-      ctx.fillText(s.name + (tier > 0 && !s.isBoss ? " " + "★".repeat(tier) : ""), hp.x, hp.y - r - (s === leader ? 26 : 10));
+      ctx.fillText(s.name + (tier > 0 && !s.isBoss && !s.phantom ? " " + "★".repeat(tier) : ""), hp.x, hp.y - r - (s === leader ? 26 : 10));
     }
 
     ctx.restore();
@@ -1226,20 +1312,25 @@
     for (const s of snakes) {
       if (s.dead) continue;
       const x = c + s.head.x * scale, y = c + s.head.y * scale;
-      mctx.fillStyle = s.isBoss ? "#ff4d6d" : s === player ? "#4de3ff" : "rgba(230,236,255,0.45)";
+      mctx.fillStyle = s.isBoss ? "#ff4d6d" : s.phantom ? "#dbe9ff" : s === player ? "#4de3ff" : "rgba(230,236,255,0.45)";
       mctx.beginPath();
-      mctx.arc(x, y, s.isBoss ? 3.6 : s === player ? 4 : 2.2, 0, Math.PI * 2);
+      mctx.arc(x, y, s.isBoss || s.phantom ? 3.4 : s === player ? 4 : 2.2, 0, Math.PI * 2);
       mctx.fill();
     }
   }
 
   function renderEffects() {
-    let html = `<span class="fx-chip tier">${TIERS[player.tier].name}</span>`;
-    html += `<span class="fx-chip">☠ ${player.kills}</span>`;
-    if (player.fx.overdrive > 0) html += `<span class="fx-chip">⚡ ${Math.ceil(player.fx.overdrive)}s</span>`;
-    if (player.fx.magnet > 0) html += `<span class="fx-chip">🧲 ${Math.ceil(player.fx.magnet)}s</span>`;
-    if (player.shieldCharge) html += `<span class="fx-chip">🛡️ ready</span>`;
-    el("effects").innerHTML = html;
+    if (player) {
+      let html = `<span class="fx-chip tier">${TIERS[player.tier].name}</span>`;
+      html += `<span class="fx-chip">☠ ${player.kills}</span>`;
+      if (player.fx.overdrive > 0) html += `<span class="fx-chip">⚡ ${Math.ceil(player.fx.overdrive)}s</span>`;
+      if (player.fx.magnet > 0) html += `<span class="fx-chip">🧲 ${Math.ceil(player.fx.magnet)}s</span>`;
+      if (player.shieldCharge) html += `<span class="fx-chip">🛡️ ready</span>`;
+      if (phantom && !phantom.dead) html += `<span class="fx-chip">👻 ${Math.ceil(phantomLife)}s</span>`;
+      el("effects").innerHTML = html;
+    } else {
+      el("effects").innerHTML = "";
+    }
 
     const bb = el("boss-bar");
     if (boss && !boss.dead) {
@@ -1274,11 +1365,11 @@
     if (lbTimer > 0) return;
     lbTimer = 0.5;
     renderEffects();
-    scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
+    if (player) scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
 
-    const ranked = snakes.filter(s => !s.dead).sort((a, b) => b.len - a.len);
-    leader = ranked[0] && !ranked[0].isBoss ? ranked[0] : (ranked.find(s => !s.isBoss) || null);
-    const myRank = ranked.indexOf(player) + 1;
+    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => b.len - a.len);
+    leader = ranked.find(s => !s.isBoss) || null;
+    const myRank = player ? ranked.indexOf(player) + 1 : 0;
     if (myRank > 0 && myRank < bestRank) bestRank = myRank;
 
     lbList.innerHTML = "";
@@ -1304,34 +1395,55 @@
     frameDt = dt;
 
     if (running) {
-      // Player steering: head toward the pointer.
-      const hp = worldToScreen(player.head.x, player.head.y);
-      const dx = pointer.x - hp.x, dy = pointer.y - hp.y;
-      if (dx * dx + dy * dy > 100) player.targetDir = Math.atan2(dy, dx);
-      player.boosting = pointerBoost || keyBoost || btnBoost;
+      // Player steering: head toward the pointer (not in ghost mode).
+      if (player) {
+        const hp = worldToScreen(player.head.x, player.head.y);
+        const dx = pointer.x - hp.x, dy = pointer.y - hp.y;
+        if (dx * dx + dy * dy > 100) player.targetDir = Math.atan2(dy, dx);
+        player.boosting = pointerBoost || keyBoost || btnBoost;
+      }
 
       for (const s of snakes) s.update(dt);
       checkCollisions();
       updateParticles(dt);
-      audio.setBoost(player.boosting && player.len > MIN_BOOST_LEN);
+      audio.setBoost(!!player && player.boosting && player.len > MIN_BOOST_LEN);
 
       // Keep the arena stocked with orbs and power-ups.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
       updatePowerups(dt);
 
       // Boss events: one giant hunter at a time, on a cooldown.
-      if (!boss || boss.dead) {
+      // Boss and phantom never overlap — one threat at a time.
+      if ((!boss || boss.dead) && (!phantom || phantom.dead)) {
         bossTimer -= dt;
         if (bossTimer <= 0) spawnBoss();
       }
 
-      // Camera: follow player, zoom out slightly as it grows.
-      const targetZoom = clamp(1.15 - player.radius * 0.014, 0.55, 1.05);
-      cam.zoom += (targetZoom - cam.zoom) * 0.03;
-      cam.x += (player.head.x - cam.x) * CAM_LERP;
-      cam.y += (player.head.y - cam.y) * CAM_LERP;
+      // Phantom haunting: lives ~25s then fades.
+      if (phantom && !phantom.dead) {
+        phantomLife -= dt;
+        if (phantomLife <= 0) {
+          phantom.dead = true;
+          spawnBurst(phantom.head.x, phantom.head.y, 210);
+          phantomTimer = rand(100, 160);
+        } else {
+          drainNearPhantom(dt);
+        }
+      } else if (!boss || boss.dead) {
+        phantomTimer -= dt;
+        if (phantomTimer <= 0) spawnPhantom();
+      }
 
-      scoreValue.textContent = player.score.toLocaleString();
+      // Camera: follow the player — or the arena leader in ghost mode.
+      const focus = player || (leader && !leader.dead ? leader : null);
+      if (focus) {
+        const targetZoom = clamp(1.15 - focus.radius * 0.014, 0.55, 1.05);
+        cam.zoom += (targetZoom - cam.zoom) * 0.03;
+        cam.x += (focus.head.x - cam.x) * CAM_LERP;
+        cam.y += (focus.head.y - cam.y) * CAM_LERP;
+      }
+
+      scoreValue.textContent = (player ? player.score : focus ? focus.score : 0).toLocaleString();
       updateLeaderboard(dt);
       drawMinimap();
     } else if (player && player.dead) {
@@ -1578,7 +1690,24 @@
     }
   });
 
-  el("restart-btn").addEventListener("click", () => { if (running) startGame(); });
+  function exitToMenu() {
+    running = false;
+    spectating = false;
+    audio.setBoost(false);
+    hud.classList.add("hidden");
+    hud.classList.remove("spectate");
+    deathScreen.classList.add("hidden");
+    showBest();
+    renderDaily();
+    menu.classList.remove("hidden");
+  }
+
+  el("restart-btn").addEventListener("click", () => {
+    if (!running) return;
+    if (spectating) exitToMenu();
+    else startGame();
+  });
+  el("spectate-btn").addEventListener("click", () => startGame(true));
 
   // Sound: lazy-init on first gesture; mute toggles in HUD, menu and via M key.
   window.addEventListener("pointerdown", () => { audio.ensure(); audio.resume(); }, { once: true });
@@ -1722,7 +1851,9 @@
     get player() { return player; },
     get snakes() { return snakes; },
     get boss() { return boss; },
+    get phantom() { return phantom; },
     spawnBoss,
+    spawnPhantom,
     stats
   };
 
