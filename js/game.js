@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.8.0";
+  const VERSION = "1.8.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -574,6 +574,11 @@
 
       // Move head, then let every segment chase the one in front of it.
       const h = this.head;
+      // Self-heal: a non-finite direction or head (from a timing anomaly,
+      // e.g. returning after the tab slept for hours) would otherwise
+      // seed NaN through the whole chain and freeze the body scattered.
+      if (!isFinite(this.dir)) this.dir = this.targetDir = 0;
+      if (!isFinite(h.x) || !isFinite(h.y)) { h.x = 0; h.y = 0; }
       h.x += Math.cos(this.dir) * speed * dt;
       h.y += Math.sin(this.dir) * speed * dt;
 
@@ -581,8 +586,14 @@
       for (let i = 1; i < this.segs.length; i++) {
         const a = this.segs[i - 1], b = this.segs[i];
         const dx = a.x - b.x, dy = a.y - b.y;
-        const d = Math.hypot(dx, dy) || 0.0001;
-        if (d > spacing) {
+        const d = Math.hypot(dx, dy);
+        // If a segment is non-finite or absurdly far from its leader,
+        // snap it back onto the chain — this makes an exploded body
+        // impossible to persist; it re-tightens within a frame.
+        if (!isFinite(d) || d > spacing * 40) {
+          b.x = a.x - Math.cos(this.dir) * spacing;
+          b.y = a.y - Math.sin(this.dir) * spacing;
+        } else if (d > spacing) {
           const move = (d - spacing) / d;
           b.x += dx * move;
           b.y += dy * move;
@@ -1536,8 +1547,12 @@
   let lastT = performance.now();
   function frame(now) {
     requestAnimationFrame(frame);
-    const dt = clamp((now - lastT) / 1000, 0, 0.05);
+    const gap = now - lastT;
     lastT = now;
+    // A large gap means the tab was backgrounded / the device slept.
+    // Don't try to simulate the lost time — advance zero and just redraw,
+    // so nothing lurches or destabilises on return.
+    const dt = gap > 250 ? 0 : clamp(gap / 1000, 0, 0.05);
     frameDt = dt;
 
     if (running && !paused) {
@@ -1866,8 +1881,10 @@
     }
   });
   // Auto-pause when the tab loses focus mid-run — no sneaky deaths.
+  // On return, reset the frame clock so the first frame has a tiny dt.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pauseGame();
+    else lastT = performance.now();
   });
 
   function exitToMenu() {
