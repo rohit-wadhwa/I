@@ -20,6 +20,8 @@ npx serve .
 |--------|---------|
 | Steer  | Move the mouse / drag on touch |
 | Boost  | Hold left-click, **Space**, or the ⚡ button (mobile) |
+| Pause  | **P**, **Esc**, or the ⏸ button (auto-pauses on tab switch) |
+| Mute   | **M**, the 🔊 button, or the menu toggle |
 | Grow   | Eat glowing orbs and the remains of fallen serpents |
 | Die    | Crash into another serpent's body or the electrified arena wall |
 

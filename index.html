@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=1.7.0" />
+  <link rel="stylesheet" href="css/style.css?v=1.7.1" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -39,7 +39,7 @@
       <ol id="leaderboard-list"></ol>
     </div>
     <canvas id="minimap" width="140" height="140"></canvas>
-    <div id="boost-hint">Hold <b>Space</b> / click to boost</div>
+    <div id="boost-hint">Hold <b>Space</b> / click to boost · <b>P</b> pause · <b>M</b> mute</div>
     <button id="boost-btn" aria-label="Boost">⚡</button>
     <div id="hud-tools">
       <button id="pause-btn" title="Pause (P / Esc)">⏸</button>
@@ -109,6 +109,8 @@
         <div><b>Power-ups</b> — grab the glowing rings</div>
         <div><b>Bosses</b> — bait them 3× to slay</div>
         <div><b>Phantom</b> — avoid it, it drains you</div>
+        <div><b>Pause</b> — P / Esc or ⏸</div>
+        <div><b>XP</b> — every run levels you up</div>
       </div>
       <div id="best-score" class="best"></div>
 
@@ -133,6 +135,8 @@
       <div class="tut-step"><span>👹</span><div><b>Bosses.</b> Every couple of minutes a 3-HP boss serpent invades and hunts you. Bait it into crashing into your body three times — victory pays mass and a rare skin.</div></div>
       <div class="tut-step"><span>👻</span><div><b>The Phantom.</b> Sometimes a ghost serpent haunts the arena for ~25s. It can't be killed and bodies pass through it — but its touch <b>drains your length</b>. Keep your distance until it fades.</div></div>
       <div class="tut-step"><span>🧱</span><div><b>The wall.</b> The red ring is electrified and kills instantly (only a 🛡️ shield saves you). Never let a fight push you into it.</div></div>
+      <div class="tut-step"><span>📈</span><div><b>Levels.</b> Every point you score in any run becomes permanent XP — levels are endless and titles grow with you, from Hatchling to Cosmic Leviathan. No run is ever wasted.</div></div>
+      <div class="tut-step"><span>🎛️</span><div><b>Make it yours.</b> Pick your <b>Arena intensity</b> (Chill / Classic / Chaos) on the menu. Pause anytime with <b>P</b>, <b>Esc</b> or ⏸ — the game also auto-pauses if you switch tabs. <b>M</b> mutes sound, <b>FX: Lite</b> speeds up older phones, and 👁 Ghost Mode lets you study the arena without risking your scales.</div></div>
       <div class="tut-step"><span>🏆</span><div><b>Win.</b> Camp crash sites for orb feasts, encircle smaller serpents to trap them, and check the minimap so a Leviathan never surprises you.</div></div>
       <button id="tutorial-close" class="primary-btn">GOT IT</button>
     </div>
@@ -155,6 +159,8 @@
         <li><b>Evolution</b> — 5 forms that change your size, speed and look as you grow.</li>
         <li><b>Contested power-ups</b> — overdrive, magnet, shield and feast, hunted by bots too.</li>
         <li><b>Magnetic orbs</b>, particle death-bursts, and a parallax neon world.</li>
+        <li><b>Endless progression</b> — lifetime XP with uncapped levels; every run counts forever.</li>
+        <li><b>Player-first controls</b> — pause, arena intensity, sound and FX toggles. Your game, your pace.</li>
         <li><b>100% static &amp; offline</b> — no servers, no ads, no tracking, no downloads. One tiny page.</li>
       </ul>
       <p class="about-text small" id="about-version"></p>
@@ -192,6 +198,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=1.7.0"></script>
+  <script src="js/game.js?v=1.7.1"></script>
 </body>
 </html>
