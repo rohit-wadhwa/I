@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.5.0";
+  const VERSION = "1.5.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -474,6 +474,7 @@
       this.invuln = 0;
       this.lastTier = -1;
       this.orbsEaten = 0;
+      this.scorePoints = 0;
       this.speedMul = this.speedMul || 1;
       this.segs = [];
       for (let i = 0; i < START_LEN; i++) {
@@ -490,7 +491,9 @@
     get radius() {
       return (5 + Math.pow(this.len, 0.62) * 0.55) * (1 + this.tier * 0.06) * (this.isBoss ? 1.35 : 1);
     }
-    get score() { return Math.max(0, Math.floor((this.len - START_LEN) * 10)); }
+    // Score counts everything eaten this run and never decreases —
+    // length is capped at 520 for balance, but score has no ceiling.
+    get score() { return Math.floor(this.scorePoints); }
     get spacing() { return SEG_SPACING + this.radius * 0.18; }
 
     update(dt) {
@@ -584,6 +587,7 @@
         const eatR = this.radius + f.r;
         if (d2 < eatR * eatR) {
           this.len = Math.min(this.len + f.value, 520);
+          this.scorePoints += f.value * 10;
           this.orbsEaten++;
           if (this === player) audio.eat();
           removeFood(f);
@@ -767,6 +771,7 @@
         if (killer === player) {
           stats.bossKills++;
           player.len = Math.min(player.len + 30, 520);
+          player.scorePoints += 300;   // slaying a boss pays even at max size
           checkUnlocks();
           savePrefs(prefs);
         }
@@ -873,7 +878,7 @@
     if (k === "overdrive") snake.fx.overdrive = 6;
     else if (k === "magnet") snake.fx.magnet = 10;
     else if (k === "shield") snake.shieldCharge = true;
-    else if (k === "feast") snake.len = Math.min(snake.len + 20, 520);
+    else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
     if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
   }
@@ -1367,7 +1372,7 @@
     renderEffects();
     if (player) scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
 
-    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => b.len - a.len);
+    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => b.score - a.score);
     leader = ranked.find(s => !s.isBoss) || null;
     const myRank = player ? ranked.indexOf(player) + 1 : 0;
     if (myRank > 0 && myRank < bestRank) bestRank = myRank;
