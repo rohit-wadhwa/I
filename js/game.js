@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.9.2";
+  const VERSION = "1.9.3";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -1314,10 +1314,15 @@
     }
   }
 
+  // Body thickness along the snake: full at the head, tapering to a clear
+  // point at the tail so the tail end is always identifiable.
+  function bodyTaper(t) { return 1 - Math.pow(t, 1.5) * 0.82; }
+
   function drawSnake(s, time) {
     const r = s.radius * cam.zoom;
     const light = s.light, sat = s.sat;
     const tier = s.tier;
+    const nSeg = s.segs.length;
 
     ctx.save();
     if (s.invuln > 0) ctx.globalAlpha = 0.5 + 0.28 * Math.sin(time * 0.03);
@@ -1329,7 +1334,7 @@
       const seg = s.segs[i];
       const p = worldToScreen(seg.x, seg.y);
       if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
-      const segR = r * (1 - (i / s.segs.length) * 0.35) * 1.12;
+      const segR = r * bodyTaper(i / nSeg) * 1.12;
       ctx.drawImage(shadow, p.x - segR + r * 0.18, p.y - segR + r * 0.34, segR * 2, segR * 2);
     }
 
@@ -1338,7 +1343,7 @@
       const seg = s.segs[i];
       const p = worldToScreen(seg.x, seg.y);
       if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
-      const segR = r * (1 - (i / s.segs.length) * 0.35);
+      const segR = r * bodyTaper(i / nSeg);
       const col = segColor(s, i);
       ctx.drawImage(getSphereSprite(col[0], col[1], col[2]), p.x - segR, p.y - segR, segR * 2, segR * 2);
     }
@@ -1351,7 +1356,7 @@
         const p = worldToScreen(b.x, b.y);
         if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
         const ang = Math.atan2(a.y - b.y, a.x - b.x);
-        const segR = r * (1 - (i / s.segs.length) * 0.35);
+        const segR = r * bodyTaper(i / nSeg);
         for (const side of [-1, 1]) {
           const fa = ang + side * Math.PI / 2;
           ctx.beginPath();
@@ -1624,7 +1629,9 @@
       // Camera: follow the player — or the arena leader in ghost mode.
       const focus = player || (leader && !leader.dead ? leader : null);
       if (focus) {
-        const targetZoom = clamp(1.15 - focus.radius * 0.014, 0.55, 1.05);
+        // Zoom out more as the serpent grows so more of your body — and
+        // your tail — stays on screen.
+        const targetZoom = clamp(1.18 - focus.radius * 0.02, 0.44, 1.05);
         cam.zoom += (targetZoom - cam.zoom) * 0.03;
         cam.x += (focus.head.x - cam.x) * CAM_LERP;
         cam.y += (focus.head.y - cam.y) * CAM_LERP;
