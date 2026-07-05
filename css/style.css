@@ -699,6 +699,63 @@ body.touch #boost-hint { display: none; }
   color: var(--text);
 }
 
+/* ---------- Tablets: large touch screens get a scaled-up UI ---------- */
+@media (pointer: coarse) and (min-width: 640px) {
+  .menu-card { width: min(600px, 90vw); padding: 44px 46px; border-radius: 26px; }
+  .menu-card.wide { width: min(680px, 92vw); }
+  .logo { font-size: 54px; }
+  .logo span { font-size: 36px; letter-spacing: 13px; }
+  .tagline { font-size: 17px; }
+
+  #nickname { padding: 19px 20px; font-size: 21px; border-radius: 16px; }
+  .hud-label { font-size: 13px; }
+  .skin-swatch { width: 58px; height: 58px; }
+  .skin-swatch.locked::after { font-size: 21px; }
+  #skin-hint { font-size: 15px; }
+
+  .primary-btn { padding: 20px; font-size: 20px; border-radius: 16px; }
+  .ghost-btn { padding: 16px; font-size: 16px; }
+  .ghost-btn.small { padding: 12px 6px; font-size: 14px; }
+  .link-btn, .menu-footer { font-size: 14px; }
+
+  #level-card, #daily-card { padding: 16px 20px; }
+  #daily-desc { font-size: 16px; }
+  #daily-status { font-size: 13px; }
+  .daily-track { height: 8px; }
+  #difficulty-seg button { padding: 9px 20px; font-size: 14px; }
+
+  .how-to { font-size: 15px; gap: 10px 20px; }
+  .best { font-size: 16px; }
+
+  .overlay-title { font-size: 28px; }
+  .tut-step { font-size: 16.5px; padding: 12px 0; }
+  .tut-step span { font-size: 26px; }
+  .about-text, .diff-list { font-size: 16px; }
+
+  .death-title { font-size: 38px; }
+  .stat-num { font-size: 30px; }
+  #run-chart { height: 140px; }
+
+  /* HUD */
+  #score-panel { padding: 14px 24px; }
+  #score-value { font-size: 36px; }
+  #effects { top: 118px; max-width: 300px; }
+  .fx-chip { font-size: 15px; padding: 6px 14px; }
+  #leaderboard { min-width: 240px; padding: 16px 20px; }
+  #leaderboard-list li { font-size: 16px; padding: 3px 0; }
+  #minimap { width: 180px; height: 180px; }
+  #hud-tools { gap: 12px; }
+  #hud-tools button { width: 54px; height: 54px; font-size: 23px; }
+  #boost-btn { width: 96px; height: 96px; font-size: 40px; bottom: 40px; left: 36px; }
+  #boost-hint, #spectate-tag { font-size: 15px; }
+  #boss-bar { top: 84px; padding: 10px 24px; }
+  .boss-name { font-size: 16px; }
+  .boss-hp { font-size: 19px; }
+  #evolve-banner { font-size: 44px; }
+  #toast { font-size: 21px; }
+  #update-pill { font-size: 15px; padding: 13px 26px; bottom: 100px; }
+}
+
 @media (max-width: 600px) {
   #leaderboard { min-width: 150px; padding: 8px 12px; }
   #leaderboard-list li { font-size: 11px; }
