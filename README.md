@@ -1,6 +1,6 @@
 # 🐍 Neon Serpent Arena
 
-**v1.5.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
+**v1.7.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
@@ -62,6 +62,13 @@ Glowing rings spawn around the arena — bots hunt them too:
 - **👁 Ghost mode** (v1.5.0) — spectate the arena without playing: the camera follows the current leader while bots, bosses and phantoms battle on
 - **👻 The Phantom** (v1.5.0) — a spectral serpent that haunts the arena for ~25s at a time; it can't be killed and bodies pass through it, but its touch drains your length — pure avoidance tension (never spawns at the same time as a boss)
 - Bigger orbs are now worth more (value scales with dot size)
+- **⏸ Pause** (v1.7.0) — P / Esc / HUD button, with auto-pause when the tab loses focus; shows a strategy tip while paused
+- **Arena intensity** (v1.7.0) — user-selectable Chill / Classic / Chaos: bot count (8/13/18), starting sizes and boss/phantom cadence
+- **Endless levels** (v1.7.0) — lifetime XP (all score ever earned) drives an uncapped level curve with titles and an XP bar; level-up toasts on the death screen
+- **Endless difficulty ramp** (v1.7.0) — respawning bots return bigger as your run's score climbs, so long runs stay dangerous
+- **FX Full/Lite toggle** (v1.7.0) — Lite skips shadows, glows and stars for smooth play on older phones
+- **🦎 Chameleon** (v1.6.0) — see power-ups table
+- **Safe updates** (v1.5.3) — update prompts never interrupt a live run; accidental refresh asks for confirmation
 
 ## Features
 

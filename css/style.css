@@ -218,8 +218,62 @@ html, body {
   filter: none;
 }
 
-#daily-card {
+#level-card {
   margin-top: 18px;
+  padding: 12px 16px;
+  text-align: left;
+  background: rgba(5, 7, 18, 0.6);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+}
+
+#level-card .hud-label b { color: var(--accent); font-size: 13px; }
+#level-title { color: var(--text); text-transform: none; letter-spacing: 0.5px; }
+
+#level-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ffd75e, var(--accent2));
+  transition: width 0.4s ease;
+}
+
+#difficulty-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+#difficulty-seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(5, 7, 18, 0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+}
+
+#difficulty-seg button {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+#difficulty-seg button.on {
+  color: #04121a;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+#daily-card {
+  margin-top: 14px;
   padding: 12px 16px;
   text-align: left;
   background: rgba(5, 7, 18, 0.6);

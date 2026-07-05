@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=1.6.1" />
+  <link rel="stylesheet" href="css/style.css?v=1.7.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -42,6 +42,7 @@
     <div id="boost-hint">Hold <b>Space</b> / click to boost</div>
     <button id="boost-btn" aria-label="Boost">⚡</button>
     <div id="hud-tools">
+      <button id="pause-btn" title="Pause (P / Esc)">⏸</button>
       <button id="shot-btn" title="Save a screenshot">📸</button>
       <button id="restart-btn" title="Restart run / exit ghost mode">⟳</button>
       <button id="mute-btn" title="Toggle sound (M)">🔊</button>
@@ -61,6 +62,23 @@
         <div class="hud-label">Skin collection</div>
         <div id="skin-list"></div>
         <div id="skin-hint"></div>
+      </div>
+
+      <div id="level-card">
+        <div class="daily-head">
+          <span class="hud-label">Level <b id="level-num">1</b> · <span id="level-title"></span></span>
+          <span class="hud-label">XP</span>
+        </div>
+        <div class="daily-track"><div id="level-fill"></div></div>
+      </div>
+
+      <div id="difficulty-row">
+        <div class="hud-label">Arena intensity</div>
+        <div id="difficulty-seg">
+          <button data-d="0">Chill</button>
+          <button data-d="1" class="on">Classic</button>
+          <button data-d="2">Chaos</button>
+        </div>
       </div>
 
       <div id="daily-card">
@@ -96,6 +114,7 @@
 
       <div class="menu-footer">
         <button id="version-tag" class="link-btn version" title="Check for a newer version"></button>
+        <button id="fx-btn" class="link-btn version" title="Toggle visual effects (Lite = faster on old phones)">FX: Full</button>
         <button id="reset-btn" class="link-btn">Reset progress</button>
       </div>
     </div>
@@ -161,8 +180,18 @@
     </div>
   </div>
 
+  <!-- Pause -->
+  <div id="pause-overlay" class="overlay top hidden">
+    <div class="menu-card">
+      <h2 class="overlay-title">PAUSED</h2>
+      <p id="pause-tip" class="tagline"></p>
+      <button id="resume-btn" class="primary-btn">RESUME</button>
+      <button id="pause-quit-btn" class="ghost-btn">BACK TO MENU</button>
+    </div>
+  </div>
+
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=1.6.1"></script>
+  <script src="js/game.js?v=1.7.0"></script>
 </body>
 </html>

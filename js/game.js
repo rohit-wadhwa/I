@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.6.1";
+  const VERSION = "1.7.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -59,6 +59,28 @@
 
   const BOSS_NAMES = ["OMEGA SERPENT", "VOID WYRM", "INFERNO NAGA", "STORM BASILISK"];
   const BOSS_SKIN = { colors: [[0, 85, 48], [40, 90, 55]] };
+
+  // Arena intensity — user-selected pacing knob.
+  const DIFFS = [
+    { name: "Chill",   bots: 8,  bossCd: 1.5,  botLen: 45 },
+    { name: "Classic", bots: 13, bossCd: 1.0,  botLen: 70 },
+    { name: "Chaos",   bots: 18, bossCd: 0.65, botLen: 95 }
+  ];
+
+  // Endless level curve: level N starts at 400·(N-1)² lifetime XP.
+  const LEVEL_TITLES = [
+    "Hatchling", "Glow Rookie", "Orb Chaser", "Neon Hunter", "Arena Stalker",
+    "Serpent Elite", "Boss Breaker", "Phantom Dancer", "Grid Legend", "Cosmic Leviathan"
+  ];
+
+  const PAUSE_TIPS = [
+    "Boost across a giant's path, then turn hard — let them do the crashing.",
+    "The phantom can't be fought. Trade distance for time until it fades.",
+    "Crash sites are gold mines — and ambush spots. Arrive second, not first.",
+    "A boss chases heads, not tails. Loop around your own body to bait it.",
+    "Small and nimble beats big and clumsy in a head-on duel you started.",
+    "The 🦎 chameleon re-colors you against the crowd — grab it before a brawl."
+  ];
 
   const DAILY_TYPES = [
     { desc: t => `Score ${t.toLocaleString()} points today`, target: 3000, measure: "score" },
@@ -796,7 +818,7 @@
       } else if (this.isBoss) {
         showToast("BOSS DEFEATED!", "#4de3ff");
         audio.bossDown();
-        bossTimer = rand(80, 130);
+        bossTimer = rand(80, 130) * DIFFS[difficulty].bossCd;
         if (killer === player) {
           stats.bossKills++;
           player.len = Math.min(player.len + 30, 520);
@@ -805,8 +827,14 @@
           savePrefs(prefs);
         }
       } else {
-        // Bots respawn fresh after a beat.
-        setTimeout(() => { if (snakes.includes(this)) this.reset(); }, rand(1500, 4000));
+        // Bots respawn fresh after a beat — bigger as the run gets hot,
+        // so long sessions keep their teeth.
+        setTimeout(() => {
+          if (!snakes.includes(this)) return;
+          this.reset();
+          const ramp = player && !player.dead ? Math.min(60, player.score / 200) : 0;
+          this.len = rand(START_LEN, DIFFS[difficulty].botLen + ramp);
+        }, rand(1500, 4000));
       }
     }
   }
@@ -973,6 +1001,9 @@
   let player = null;
   let running = false;
   let spectating = false;
+  let paused = false;
+  let difficulty = clamp(prefs.difficulty ?? 1, 0, 2);
+  let fxLite = !!prefs.fxLite;
   let frameDt = 0.016;
   let cam = { x: 0, y: 0, zoom: 1 };
   let bestRank = 99;
@@ -1012,9 +1043,10 @@
       player = new Snake(name, SKIN_DEFS[selectedSkin], false);
     }
 
+    const diff = DIFFS[difficulty];
     const usedNames = new Set();
     snakes = player ? [player] : [];
-    for (let i = 0; i < BOT_COUNT; i++) {
+    for (let i = 0; i < diff.bots; i++) {
       let bn;
       do { bn = BOT_NAMES[(Math.random() * BOT_NAMES.length) | 0]; } while (usedNames.has(bn));
       usedNames.add(bn);
@@ -1025,13 +1057,15 @@
         skinPick = SKIN_DEFS[(Math.random() * SKIN_DEFS.length) | 0];
       } while (player && skinPick === SKIN_DEFS[selectedSkin]);
       const bot = new Snake(bn, skinPick, true);
-      bot.len = rand(START_LEN, 70);   // varied starting sizes
+      bot.len = rand(START_LEN, diff.botLen);   // varied starting sizes
       snakes.push(bot);
     }
     boss = null;
-    bossTimer = spectating ? 20 : 55;
+    bossTimer = (spectating ? 20 : 55) * diff.bossCd;
     phantom = null;
-    phantomTimer = spectating ? 50 : 90;
+    phantomTimer = (spectating ? 50 : 90) * diff.bossCd;
+    paused = false;
+    el("pause-overlay").classList.add("hidden");
 
     const f0 = player ? player.head : { x: 0, y: 0 };
     cam.x = f0.x; cam.y = f0.y; cam.zoom = spectating ? 0.8 : 1;
@@ -1056,7 +1090,8 @@
     const score = player.score;
     if (score > (prefs.best || 0)) prefs.best = score;
 
-    // Lifetime stats drive skin unlocks and the daily challenge.
+    // Lifetime stats drive skin unlocks, levels and the daily challenge.
+    const lvlBefore = levelInfo().lvl;
     stats.games++;
     stats.totalScore += score;
     stats.totalKills += player.kills;
@@ -1072,7 +1107,14 @@
     deathSnap.width = canvas.width; deathSnap.height = canvas.height;
     deathSnap.getContext("2d").drawImage(canvas, 0, 0);
 
-    el("death-cause").textContent = "You crashed into " + cause + " as a " + TIERS[player.tier].name + ".";
+    el("death-cause").textContent = "You crashed into " + cause + " as a " + TIERS[player.tier].name + " · +" + score.toLocaleString() + " XP";
+    const lvlNow = levelInfo().lvl;
+    if (lvlNow > lvlBefore) {
+      setTimeout(() => {
+        showToast("LEVEL UP — " + lvlNow + " · " + levelTitle(lvlNow).toUpperCase(), "#ffd75e");
+        audio.unlock();
+      }, 1200);
+    }
     el("final-score").textContent = score.toLocaleString();
     el("final-length").textContent = Math.floor(player.len);
     el("final-kills").textContent = player.kills;
@@ -1160,7 +1202,7 @@
 
     // Distant stars (parallax at half speed).
     ctx.save();
-    for (const s of stars) {
+    if (!fxLite) for (const s of stars) {
       const sx = (s.x - cam.x * 0.5) * cam.zoom + W / 2;
       const sy = (s.y - cam.y * 0.5) * cam.zoom + H / 2;
       if (sx < -10 || sx > W + 10 || sy < -10 || sy > H + 10) continue;
@@ -1215,15 +1257,17 @@
       if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) continue;
       const pulse = 1 + 0.16 * Math.sin(time * 0.004 + f.pulse);
       const r = f.r * cam.zoom * pulse;
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4);
-      g.addColorStop(0, `hsla(${f.hue}, 95%, 72%, 0.95)`);
-      g.addColorStop(0.45, `hsla(${f.hue}, 95%, 60%, 0.5)`);
-      g.addColorStop(1, `hsla(${f.hue}, 95%, 55%, 0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2);
-      ctx.fill();
-      // Glossy 3D core on top of the glow.
+      if (!fxLite) {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4);
+        g.addColorStop(0, `hsla(${f.hue}, 95%, 72%, 0.95)`);
+        g.addColorStop(0.45, `hsla(${f.hue}, 95%, 60%, 0.5)`);
+        g.addColorStop(1, `hsla(${f.hue}, 95%, 55%, 0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Glossy 3D core (the glow above is skipped in FX Lite).
       const hue = Math.round(f.hue / 12) * 12;
       ctx.drawImage(getSphereSprite(hue, 90, 62), p.x - r, p.y - r, r * 2, r * 2);
     }
@@ -1240,7 +1284,7 @@
 
     // Soft drop shadows under the body sell the 3D look (ghosts cast none).
     const shadow = getShadowSprite();
-    if (!s.phantom) for (let i = s.segs.length - 1; i >= 0; i -= 2) {
+    if (!s.phantom && !fxLite) for (let i = s.segs.length - 1; i >= 0; i -= 2) {
       const seg = s.segs[i];
       const p = worldToScreen(seg.x, seg.y);
       if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) continue;
@@ -1283,7 +1327,7 @@
     const hp = worldToScreen(s.head.x, s.head.y);
     if (hp.x > -80 && hp.x < W + 80 && hp.y > -80 && hp.y < H + 80) {
       // Python+ radiate an aura.
-      if (tier >= 2) {
+      if (tier >= 2 && !fxLite) {
         const g = ctx.createRadialGradient(hp.x, hp.y, r, hp.x, hp.y, r * 3);
         g.addColorStop(0, `hsla(${s.hue}, 95%, 65%, 0.28)`);
         g.addColorStop(1, `hsla(${s.hue}, 95%, 65%, 0)`);
@@ -1491,7 +1535,7 @@
     lastT = now;
     frameDt = dt;
 
-    if (running) {
+    if (running && !paused) {
       // Player steering: head toward the pointer (not in ghost mode).
       if (player) {
         const hp = worldToScreen(player.head.x, player.head.y);
@@ -1522,7 +1566,7 @@
         if (phantomLife <= 0) {
           phantom.dead = true;
           spawnBurst(phantom.head.x, phantom.head.y, 210);
-          phantomTimer = rand(100, 160);
+          phantomTimer = rand(100, 160) * DIFFS[difficulty].bossCd;
         } else {
           drainNearPhantom(dt);
         }
@@ -1543,7 +1587,7 @@
       scoreValue.textContent = (player ? player.score : focus ? focus.score : 0).toLocaleString();
       updateLeaderboard(dt);
       drawMinimap();
-    } else if (player && player.dead) {
+    } else if (!paused && player && player.dead) {
       // Let bots keep swimming behind the death screen.
       for (const s of snakes) if (!s.dead && s.isBot) s.update(dt);
       updateParticles(dt);
@@ -1787,6 +1831,40 @@
     }
   });
 
+  // ---------- Pause ----------
+  function pauseGame() {
+    if (!running || paused || spectating || !player || player.dead) return;
+    paused = true;
+    audio.setBoost(false);
+    if (audio.ctx) audio.ctx.suspend();
+    el("pause-tip").textContent = PAUSE_TIPS[(Math.random() * PAUSE_TIPS.length) | 0];
+    el("pause-overlay").classList.remove("hidden");
+  }
+  function resumeGame() {
+    if (!paused) return;
+    paused = false;
+    el("pause-overlay").classList.add("hidden");
+    if (audio.ctx && !audio.muted) audio.ctx.resume();
+  }
+  el("pause-btn").addEventListener("click", pauseGame);
+  el("resume-btn").addEventListener("click", resumeGame);
+  el("pause-quit-btn").addEventListener("click", () => {
+    paused = false;
+    el("pause-overlay").classList.add("hidden");
+    if (audio.ctx) audio.ctx.resume();
+    exitToMenu();
+  });
+  window.addEventListener("keydown", (e) => {
+    if ((e.code === "KeyP" && document.activeElement !== el("nickname")) || e.code === "Escape") {
+      if (paused) resumeGame();
+      else pauseGame();
+    }
+  });
+  // Auto-pause when the tab loses focus mid-run — no sneaky deaths.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pauseGame();
+  });
+
   function exitToMenu() {
     running = false;
     spectating = false;
@@ -1796,6 +1874,7 @@
     deathScreen.classList.add("hidden");
     showBest();
     renderDaily();
+    renderLevel();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
   }
@@ -1829,9 +1908,14 @@
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
     el("nickname").value = "";
     selectedSkin = 0;
+    difficulty = 1;
+    fxLite = false;
+    el("fx-btn").textContent = "FX: Full";
+    renderDiffSeg();
     buildSkinPicker();
     showBest();
     renderDaily();
+    renderLevel();
     flashBtn(e.currentTarget, "Progress cleared");
   });
 
@@ -1944,12 +2028,55 @@
     el("best-score").textContent = prefs.best ? `Personal best: ${prefs.best.toLocaleString()}` : "";
   }
 
+  // ---------- Endless levels ----------
+  function levelInfo() {
+    const xp = stats.totalScore;
+    const lvl = 1 + Math.floor(Math.sqrt(xp / 400));
+    const cur = 400 * (lvl - 1) * (lvl - 1);
+    const next = 400 * lvl * lvl;
+    return { lvl, pct: Math.min(100, ((xp - cur) / (next - cur)) * 100) };
+  }
+  function levelTitle(lvl) {
+    return LEVEL_TITLES[Math.min(Math.floor((lvl - 1) / 3), LEVEL_TITLES.length - 1)];
+  }
+  function renderLevel() {
+    const { lvl, pct } = levelInfo();
+    el("level-num").textContent = lvl;
+    el("level-title").textContent = levelTitle(lvl);
+    el("level-fill").style.width = pct + "%";
+  }
+
+  function renderDiffSeg() {
+    document.querySelectorAll("#difficulty-seg button").forEach(b => {
+      b.classList.toggle("on", +b.dataset.d === difficulty);
+    });
+  }
+  document.querySelectorAll("#difficulty-seg button").forEach(b => {
+    b.addEventListener("click", () => {
+      difficulty = clamp(+b.dataset.d, 0, 2);
+      prefs.difficulty = difficulty;
+      savePrefs(prefs);
+      renderDiffSeg();
+      audio.click();
+    });
+  });
+
+  el("fx-btn").addEventListener("click", (e) => {
+    fxLite = !fxLite;
+    prefs.fxLite = fxLite;
+    savePrefs(prefs);
+    e.currentTarget.textContent = "FX: " + (fxLite ? "Lite" : "Full");
+  });
+
   el("play-btn").addEventListener("click", startGame);
   el("respawn-btn").addEventListener("click", startGame);
   el("menu-btn").addEventListener("click", () => {
     deathScreen.classList.add("hidden");
     showBest();
+    renderDaily();
+    renderLevel();
     menu.classList.remove("hidden");
+    maybeShowUpdatePill();
   });
 
   if (prefs.name) el("nickname").value = prefs.name;
@@ -1958,6 +2085,9 @@
   buildSkinPicker();
   showBest();
   renderDaily();
+  renderLevel();
+  renderDiffSeg();
+  el("fx-btn").textContent = "FX: " + (fxLite ? "Lite" : "Full");
 
   // Idle background: a few bots roam the arena behind the menu.
   foods.length = 0;
