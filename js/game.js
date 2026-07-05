@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.9.0";
+  const VERSION = "1.9.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -149,6 +149,28 @@
     const r = Math.sqrt(Math.random()) * (WORLD_R - margin);
     const a = Math.random() * Math.PI * 2;
     return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+  }
+
+  // Spawn away from other serpents: sample candidates, keep the one whose
+  // nearest snake segment is farthest. Stops respawns from landing inside
+  // another snake (which the spawn-ghost only masks for 3s).
+  function safeSpawnPoint(self, margin = 500) {
+    let best = randomWorldPoint(margin), bestD = -1;
+    const CLEAR = 260 * 260;   // "far enough" — accept early once clear
+    for (let i = 0; i < 16; i++) {
+      const c = randomWorldPoint(margin);
+      let nearest = Infinity;
+      for (const s of snakes) {
+        if (!s || s === self || s.dead || !s.segs) continue;
+        for (let j = 0; j < s.segs.length; j += 4) {
+          const d = dist2(c.x, c.y, s.segs[j].x, s.segs[j].y);
+          if (d < nearest) nearest = d;
+        }
+      }
+      if (nearest > bestD) { bestD = nearest; best = c; }
+      if (bestD > CLEAR) break;
+    }
+    return best;
   }
 
   // ---------- Persistent prefs ----------
@@ -503,7 +525,7 @@
     }
 
     reset() {
-      const p = randomWorldPoint(500);
+      const p = safeSpawnPoint(this, 500);
       this.dir = Math.random() * Math.PI * 2;
       this.targetDir = this.dir;
       this.len = START_LEN;            // fractional target length
