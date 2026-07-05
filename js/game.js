@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.7.2";
+  const VERSION = "1.8.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -79,7 +79,8 @@
     "Crash sites are gold mines — and ambush spots. Arrive second, not first.",
     "A boss chases heads, not tails. Loop around your own body to bait it.",
     "Small and nimble beats big and clumsy in a head-on duel you started.",
-    "The 🦎 chameleon re-colors you against the crowd — grab it before a brawl."
+    "The 🦎 chameleon re-colors you against the crowd — grab it before a brawl.",
+    "You spawn as a ghost for 3s — untouchable, harmless. Use it to pick a direction, not a fight."
   ];
 
   const DAILY_TYPES = [
@@ -513,7 +514,7 @@
       this.wanderT = 0;
       this.fx = { overdrive: 0, magnet: 0 };
       this.shieldCharge = false;
-      this.invuln = 0;
+      this.invuln = 3;   // spawn ghost: 3s untouchable and harmless
       this.lastTier = -1;
       this.orbsEaten = 0;
       this.scorePoints = 0;
@@ -900,7 +901,7 @@
 
   function drainNearPhantom(dt) {
     for (const s of snakes) {
-      if (s.dead || s.phantom || s.isBoss) continue;
+      if (s.dead || s.phantom || s.isBoss || s.invuln > 0) continue;
       const h = s.head;
       const rr = (s.radius + phantom.radius) ** 2;
       for (let i = 0; i < phantom.segs.length; i += 2) {
@@ -1079,6 +1080,7 @@
     hud.classList.remove("hidden");
     hud.classList.toggle("spectate", spectating);
     el("update-pill").classList.add("hidden");   // never mid-run
+    if (!spectating) showToast("✨ SPAWN GHOST — 3s OF SAFETY", "#cfe3ff");
     audio.ensure();
     audio.resume();
     audio.click();
@@ -1134,7 +1136,9 @@
       if (s.dead || s.invuln > 0 || s.phantom) continue;
       const h = s.head;
       for (const o of snakes) {
-        if (o === s || o.dead || o.phantom) continue;
+        // Spawn/shield ghosting is symmetric: an intangible snake neither
+        // dies nor kills — nobody crashes on a ghost's body.
+        if (o === s || o.dead || o.phantom || o.invuln > 0) continue;
         // Skip the few segments right behind the other head only for
         // head-on cases — body checks start from segment 2.
         const rr = (s.radius + o.radius * 0.9) ** 2;
@@ -1460,6 +1464,7 @@
       if (player.fx.overdrive > 0) html += `<span class="fx-chip">⚡ ${Math.ceil(player.fx.overdrive)}s</span>`;
       if (player.fx.magnet > 0) html += `<span class="fx-chip">🧲 ${Math.ceil(player.fx.magnet)}s</span>`;
       if (player.shieldCharge) html += `<span class="fx-chip">🛡️ ready</span>`;
+      if (player.invuln > 0) html += `<span class="fx-chip">✨ safe ${Math.ceil(player.invuln)}s</span>`;
       if (phantom && !phantom.dead) html += `<span class="fx-chip">👻 ${Math.ceil(phantomLife)}s</span>`;
       el("effects").innerHTML = html;
     } else {
@@ -1885,6 +1890,12 @@
     else startGame();
   });
   el("spectate-btn").addEventListener("click", () => startGame(true));
+  // Dedicated ghost-mode exit — big, obvious, touch-friendly.
+  el("spectate-exit").addEventListener("click", () => { if (spectating) exitToMenu(); });
+  el("spectate-exit").addEventListener("touchend", (e) => {
+    e.preventDefault();
+    if (spectating) exitToMenu();
+  }, { passive: false });
 
   // Sound: lazy-init on first gesture; mute toggles in HUD, menu and via M key.
   window.addEventListener("pointerdown", () => { audio.ensure(); audio.resume(); }, { once: true });

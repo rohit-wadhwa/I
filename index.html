@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=1.7.2" />
+  <link rel="stylesheet" href="css/style.css?v=1.8.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -47,7 +47,7 @@
       <button id="restart-btn" title="Restart run / exit ghost mode">⟳</button>
       <button id="mute-btn" title="Toggle sound (M)">🔊</button>
     </div>
-    <div id="spectate-tag">👁 GHOST MODE — watching the arena · tap ⟳ to exit</div>
+    <button id="spectate-exit">👁 GHOST MODE — TAP HERE TO EXIT</button>
   </div>
 
   <!-- Start menu -->
@@ -126,7 +126,7 @@
   <div id="tutorial" class="overlay top hidden">
     <div class="menu-card wide">
       <h2 class="overlay-title">HOW TO PLAY</h2>
-      <div class="tut-step"><span>🖱️</span><div><b>Steer.</b> Your serpent always follows the pointer (or your finger). It never stops moving — plan turns early; big serpents turn slower.</div></div>
+      <div class="tut-step"><span>🖱️</span><div><b>Steer.</b> Your serpent always follows the pointer (or your finger). It never stops moving — plan turns early; big serpents turn slower. You <b>spawn as a ghost for 3 seconds</b> — untouchable and harmless — so get your bearings before the arena gets real.</div></div>
       <div class="tut-step"><span>⚡</span><div><b>Boost.</b> Hold click / Space / the ⚡ button for ~1.8× speed. It burns your length and drops orbs behind you — a trade, not a freebie. You can't boost when tiny.</div></div>
       <div class="tut-step"><span>🔮</span><div><b>Eat.</b> Orbs are pulled magnetically toward your mouth; bigger orbs are worth more. Your <b>score counts everything you eat and never stops climbing</b> — body length maxes out at Leviathan bulk, but the score has no ceiling.</div></div>
       <div class="tut-step"><span>⚔️</span><div><b>Fight.</b> Nobody can touch your body and live. Boost across a rival's path so their head hits your side. Head-on collision? The <b>longer</b> serpent wins — ram small ones, dodge big ones.</div></div>
@@ -198,6 +198,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=1.7.2"></script>
+  <script src="js/game.js?v=1.8.0"></script>
 </body>
 </html>

@@ -71,6 +71,8 @@ Glowing rings spawn around the arena — bots hunt them too:
 - **FX Full/Lite toggle** (v1.7.0) — Lite skips shadows, glows and stars for smooth play on older phones
 - **🦎 Chameleon** (v1.6.0) — see power-ups table
 - **Safe updates** (v1.5.3) — update prompts never interrupt a live run; accidental refresh asks for confirmation
+- **✨ Spawn ghost** (v1.8.0) — every snake (you, bots, even the boss) spawns intangible for 3 seconds: it can't die and nobody can die on its body; flickers while active, with a ✨ countdown chip
+- **Tablet UI** (v1.7.2) — large touch screens get scaled-up menus, HUD and touch targets
 
 ## Features
 
