@@ -690,6 +690,15 @@ body.touch #boost-hint { display: none; }
 
 .best { margin-top: 18px; font-size: 13px; color: var(--accent); min-height: 16px; }
 
+.shard-chip {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #c9a8ff;
+  text-shadow: 0 0 10px rgba(160, 110, 255, 0.5);
+}
+
 /* ---------- Death screen ---------- */
 .death-title {
   font-size: 30px;

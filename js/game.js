@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.9.3";
+  const VERSION = "2.0.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -54,7 +54,15 @@
     { key: "galaxy",    name: "Galaxy",       colors: [[250, 70, 58], [290, 70, 46], [210, 80, 66]],
       unlock: { desc: "Complete 3 daily challenges", test: s => s.dailies >= 3 } },
     { key: "chrome",    name: "Chrome",       colors: [[220, 8, 78], [220, 8, 46]],
-      unlock: { desc: "Get 25 total kills", test: s => s.totalKills >= 25 } }
+      unlock: { desc: "Get 25 total kills", test: s => s.totalKills >= 25 } },
+    // Secret skins — hidden from the picker until earned. No auto-test;
+    // granted explicitly by shards or the cheat code.
+    { key: "stardust", name: "Stardust",     colors: [[260, 60, 70], [200, 70, 78], [320, 60, 72]],
+      secret: true, unlock: { desc: "Collect 3 Cosmic Shards", test: () => false } },
+    { key: "voidling", name: "Voidling",     colors: [[275, 90, 30], [180, 90, 55]],
+      secret: true, unlock: { desc: "Collect 10 Cosmic Shards", test: () => false } },
+    { key: "glitch",   name: "Glitch",       colors: [[120, 100, 55], [300, 100, 55], [0, 0, 95]], rainbow: true,
+      secret: true, unlock: { desc: "??? there's a code", test: () => false } }
   ];
 
   const BOSS_NAMES = ["OMEGA SERPENT", "VOID WYRM", "INFERNO NAGA", "STORM BASILISK"];
@@ -98,13 +106,14 @@
     { name: "Leviathan", at: 340 }
   ];
 
-  // w = spawn weight — the chameleon is deliberately rare.
+  // w = spawn weight — rarer specials have lower weight.
   const POWERUP_TYPES = [
     { key: "overdrive", emoji: "⚡",  hue: 48,  label: "Overdrive", w: 3 },
     { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet",    w: 3 },
     { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield",    w: 2 },
     { key: "feast",     emoji: "💠", hue: 275, label: "Feast",     w: 3 },
-    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 }
+    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 },
+    { key: "warp",      emoji: "🌀", hue: 190, label: "Warp Gate", w: 1 }
   ];
   const MAX_POWERUPS = 7;
 
@@ -183,7 +192,7 @@
   }
   const prefs = loadPrefs();
   const stats = Object.assign(
-    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0 },
+    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0, shards: 0 },
     prefs.stats
   );
   prefs.stats = stats;
@@ -698,6 +707,18 @@
           applyPowerup(this, pu);
         }
       }
+
+      // Cosmic Shards — only the player collects them (a hidden hunt).
+      if (this === player) {
+        for (let i = shards.length - 1; i >= 0; i--) {
+          const sh = shards[i];
+          const pr = this.radius + 20;
+          if (dist2(h.x, h.y, sh.x, sh.y) < pr * pr) {
+            shards.splice(i, 1);
+            collectShard();
+          }
+        }
+      }
     }
 
     // ----- Bot brain -----
@@ -1009,6 +1030,16 @@
     else if (k === "shield") snake.shieldCharge = true;
     else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
     else if (k === "chameleon") recolorSnake(snake);
+    else if (k === "warp") {
+      // Teleport to a safe spot with a brief ghost — a clean escape.
+      const dest = safeSpawnPoint(snake, 400);
+      spawnBurst(snake.head.x, snake.head.y, 190);
+      const dx = dest.x - snake.head.x, dy = dest.y - snake.head.y;
+      for (const seg of snake.segs) { seg.x += dx; seg.y += dy; }
+      snake.invuln = Math.max(snake.invuln, 1.2);
+      spawnBurst(dest.x, dest.y, 190);
+      if (snake === player) showToast("🌀 WARPED", "#4de3ff");
+    }
     if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
   }
@@ -1030,6 +1061,76 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(pu.type.emoji, p.x, p.y + 1);
+      ctx.restore();
+    }
+  }
+
+  // ---------- Cosmic Shards (rare hidden collectible) ----------
+  const shards = [];
+  let shardTimer = 45;
+
+  function spawnShard() {
+    const p = randomWorldPoint(400);
+    shards.push({ x: p.x, y: p.y, spin: 0, pulse: rand(0, Math.PI * 2), life: 40 });
+  }
+  function updateShards(dt) {
+    for (let i = shards.length - 1; i >= 0; i--) {
+      const s = shards[i];
+      s.spin += dt * 1.6;
+      s.life -= dt;
+      if (s.life <= 0) shards.splice(i, 1);   // drifts away if uncollected
+    }
+    if (shards.length === 0) {
+      shardTimer -= dt;
+      if (shardTimer <= 0) { spawnShard(); shardTimer = rand(55, 100); }
+    }
+  }
+  function grantSkin(key) {
+    if (unlocked[key]) return false;
+    const def = SKIN_DEFS.find(d => d.key === key);
+    if (!def) return false;
+    unlocked[key] = true;
+    savePrefs(prefs);
+    buildSkinPicker();
+    showToast("✦ SECRET SKIN — " + def.name.toUpperCase(), "#ffd75e");
+    audio.unlock();
+    return true;
+  }
+  function collectShard() {
+    stats.shards = (stats.shards || 0) + 1;
+    savePrefs(prefs);
+    audio.powerup();
+    spawnBurst(player.head.x, player.head.y, 265);
+    let msg = "⟡ COSMIC SHARD  ·  " + stats.shards + " collected";
+    showToast(msg, "#c9a8ff");
+    if (stats.shards >= 3) grantSkin("stardust");
+    if (stats.shards >= 10) grantSkin("voidling");
+    renderShardChip();
+  }
+  function drawShards(time) {
+    for (const s of shards) {
+      const p = worldToScreen(s.x, s.y);
+      if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;
+      const pulse = 1 + 0.18 * Math.sin(time * 0.006 + s.pulse);
+      const R = 15 * cam.zoom * pulse;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(s.spin);
+      // outer glow
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 2.6);
+      g.addColorStop(0, "rgba(201, 168, 255, 0.6)");
+      g.addColorStop(1, "rgba(201, 168, 255, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, R * 2.6, 0, Math.PI * 2); ctx.fill();
+      // diamond crystal
+      ctx.fillStyle = "#e8d9ff";
+      ctx.strokeStyle = "#7d5cff";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "rgba(160, 110, 255, 0.9)";
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.moveTo(0, -R); ctx.lineTo(R * 0.7, 0); ctx.lineTo(0, R); ctx.lineTo(-R * 0.7, 0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
   }
@@ -1068,6 +1169,8 @@
     powerups.length = 0;
     powerupTimer = 0;
     for (let i = 0; i < 4; i++) spawnPowerup();
+    shards.length = 0;
+    shardTimer = spectating ? 30 : 45;
     buildStars();
 
     if (spectating) {
@@ -1489,6 +1592,13 @@
       mctx.arc(c + pu.x * scale, c + pu.y * scale, 1.6, 0, Math.PI * 2);
       mctx.fill();
     }
+    // Shards ping the minimap so the hunt is findable.
+    mctx.fillStyle = "#c9a8ff";
+    for (const sh of shards) {
+      mctx.beginPath();
+      mctx.arc(c + sh.x * scale, c + sh.y * scale, 2.4, 0, Math.PI * 2);
+      mctx.fill();
+    }
     for (const s of snakes) {
       if (s.dead) continue;
       const x = c + s.head.x * scale, y = c + s.head.y * scale;
@@ -1603,6 +1713,7 @@
       // Keep the arena stocked with orbs and power-ups.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
       updatePowerups(dt);
+      if (player) updateShards(dt);   // shards only tick during real play
 
       // Boss events: one giant hunter at a time, on a cooldown.
       // Boss and phantom never overlap — one threat at a time.
@@ -1649,6 +1760,7 @@
     drawBackground(now);
     drawFood(now);
     drawPowerups(now);
+    drawShards(now);
     for (const s of snakes) if (!s.dead) drawSnake(s, now);
     drawParticles();
   }
@@ -2017,6 +2129,7 @@
     showBest();
     renderDaily();
     renderLevel();
+    renderShardChip();
     flashBtn(e.currentTarget, "Progress cleared");
   });
 
@@ -2102,6 +2215,8 @@
     const list = el("skin-list");
     list.innerHTML = "";
     SKIN_DEFS.forEach((d, i) => {
+      // Secret skins stay hidden from the picker until earned.
+      if (d.secret && !isUnlocked(d)) return;
       const b = document.createElement("button");
       const open = isUnlocked(d);
       b.className = "skin-swatch" + (i === selectedSkin ? " selected" : "") + (open ? "" : " locked");
@@ -2124,6 +2239,33 @@
     const cur = SKIN_DEFS[selectedSkin];
     el("skin-hint").textContent = isUnlocked(cur) ? cur.name : "";
   }
+
+  function renderShardChip() {
+    const chip = el("shard-count");
+    if (!chip) return;
+    if ((stats.shards || 0) > 0) {
+      chip.textContent = "⟡ " + stats.shards + " Cosmic Shard" + (stats.shards === 1 ? "" : "s");
+      chip.classList.remove("hidden");
+    } else {
+      chip.classList.add("hidden");
+    }
+  }
+
+  // ---------- Cheat code (the "hack") ----------
+  const KONAMI = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","KeyB","KeyA"];
+  let konamiIdx = 0;
+  window.addEventListener("keydown", (e) => {
+    konamiIdx = (e.code === KONAMI[konamiIdx]) ? konamiIdx + 1 : (e.code === KONAMI[0] ? 1 : 0);
+    if (konamiIdx === KONAMI.length) {
+      konamiIdx = 0;
+      let n = 0;
+      for (const d of SKIN_DEFS) if (d.unlock && !unlocked[d.key]) { unlocked[d.key] = true; n++; }
+      savePrefs(prefs);
+      buildSkinPicker();
+      showToast("⧉ CHEAT ACTIVATED — ALL " + n + " SKINS UNLOCKED", "#7dff9a");
+      audio.unlock();
+    }
+  });
 
   function showBest() {
     el("best-score").textContent = prefs.best ? `Personal best: ${prefs.best.toLocaleString()}` : "";
@@ -2188,6 +2330,7 @@
   renderDaily();
   renderLevel();
   renderDiffSeg();
+  renderShardChip();
   el("fx-btn").textContent = "FX: " + (fxLite ? "Lite" : "Full");
 
   // Idle background: a few bots roam the arena behind the menu.
@@ -2208,11 +2351,14 @@
     get boss() { return boss; },
     get phantom() { return phantom; },
     get foods() { return foods; },
+    get shards() { return shards; },
     spawnBoss,
     spawnPhantom,
     applyPowerup,
     spawnDropFood,
-    stats
+    spawnShard,
+    stats,
+    unlocked
   };
 
   // Drive the idle scene from the same rAF loop.
