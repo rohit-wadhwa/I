@@ -44,9 +44,10 @@ Glowing rings spawn around the arena — bots hunt them too:
 | | Effect |
 |---|--------|
 | ⚡ Overdrive | boost speed for 6s, free (no mass drain) |
-| 🧲 Magnet | 2.6× orb attraction range for 10s |
+| 🧲 Magnet | 2.6× orb attraction range for 10s, with a visible field ring |
 | 🛡️ Shield | cheat death once (crash or wall), then 2s of invulnerability |
 | 💠 Feast | instant +20 length |
+| 🦎 Chameleon | **rare** — re-colors your snake with the hue most distinct from every nearby serpent; the answer to unreadable same-color brawls |
 
 ## Skins, dailies & bosses (v1.3.0)
 

@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.5.3";
+  const VERSION = "1.6.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -74,11 +74,13 @@
     { name: "Leviathan", at: 340 }
   ];
 
+  // w = spawn weight — the chameleon is deliberately rare.
   const POWERUP_TYPES = [
-    { key: "overdrive", emoji: "⚡",  hue: 48,  label: "Overdrive" },
-    { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet" },
-    { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield" },
-    { key: "feast",     emoji: "💠", hue: 275, label: "Feast" }
+    { key: "overdrive", emoji: "⚡",  hue: 48,  label: "Overdrive", w: 3 },
+    { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet",    w: 3 },
+    { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield",    w: 2 },
+    { key: "feast",     emoji: "💠", hue: 275, label: "Feast",     w: 3 },
+    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 }
   ];
   const MAX_POWERUPS = 7;
 
@@ -882,10 +884,44 @@
   const powerups = [];
   let powerupTimer = 0;
 
+  function pickPowerupType() {
+    const total = POWERUP_TYPES.reduce((a, t) => a + (t.w || 1), 0);
+    let r = Math.random() * total;
+    for (const t of POWERUP_TYPES) {
+      r -= (t.w || 1);
+      if (r <= 0) return t;
+    }
+    return POWERUP_TYPES[0];
+  }
   function spawnPowerup() {
     const p = randomWorldPoint(300);
-    const type = POWERUP_TYPES[(Math.random() * POWERUP_TYPES.length) | 0];
-    powerups.push({ x: p.x, y: p.y, type, pulse: rand(0, Math.PI * 2) });
+    powerups.push({ x: p.x, y: p.y, type: pickPowerupType(), pulse: rand(0, Math.PI * 2) });
+  }
+
+  // Chameleon: re-color the snake with the hue most distinct from every
+  // serpent nearby — instant readability in a same-color brawl.
+  function recolorSnake(snake) {
+    const h = snake.head;
+    const nearHues = [snake.hue];   // move away from your own color too
+    for (const s of snakes) {
+      if (s === snake || s.dead) continue;
+      if (dist2(h.x, h.y, s.head.x, s.head.y) < 700 * 700) nearHues.push(s.hue);
+    }
+    let best = snake.hue, bestScore = -1;
+    for (let c = 0; c < 360; c += 15) {
+      let m = 360;
+      for (const nh of nearHues) {
+        const d = Math.abs(((c - nh) % 360 + 540) % 360 - 180);
+        if (d < m) m = d;
+      }
+      if (m > bestScore) { bestScore = m; best = c; }
+    }
+    snake.skin = { colors: [[best, 85, 60]] };
+    snake.hue = best;
+    snake.sat = 85;
+    snake.light = 60;
+    spawnBurst(h.x, h.y, best);
+    if (snake === player) showToast("🦎 CHAMELEON — FRESH COLORS, STAY SHARP", "#7dff9a");
   }
   function updatePowerups(dt) {
     powerupTimer -= dt;
@@ -900,6 +936,7 @@
     else if (k === "magnet") snake.fx.magnet = 10;
     else if (k === "shield") snake.shieldCharge = true;
     else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
+    else if (k === "chameleon") recolorSnake(snake);
     if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
   }
@@ -975,8 +1012,13 @@
       let bn;
       do { bn = BOT_NAMES[(Math.random() * BOT_NAMES.length) | 0]; } while (usedNames.has(bn));
       usedNames.add(bn);
-      // Bots wear random skins from the whole collection — a live catalog.
-      const bot = new Snake(bn, SKIN_DEFS[(Math.random() * SKIN_DEFS.length) | 0], true);
+      // Bots wear random skins — but never the player's, so your colors
+      // stay yours (until a chameleon shakes things up).
+      let skinPick;
+      do {
+        skinPick = SKIN_DEFS[(Math.random() * SKIN_DEFS.length) | 0];
+      } while (player && skinPick === SKIN_DEFS[selectedSkin]);
+      const bot = new Snake(bn, skinPick, true);
       bot.len = rand(START_LEN, 70);   // varied starting sizes
       snakes.push(bot);
     }
@@ -1931,6 +1973,7 @@
     get foods() { return foods; },
     spawnBoss,
     spawnPhantom,
+    applyPowerup,
     stats
   };
 
