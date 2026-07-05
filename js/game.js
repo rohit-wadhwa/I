@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.5.1";
+  const VERSION = "1.5.2";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -18,7 +18,7 @@
   const TURN_RATE = 4.4;           // rad/s
   const BOOST_DRAIN = 5;           // length/s spent while boosting
   const MIN_BOOST_LEN = 16;        // can't boost below this length
-  const MAGNET_RANGE = 4.2;        // orb attraction range, in head radii
+  const MAGNET_RANGE = 5.2;        // orb attraction range, in head radii
   const CAM_LERP = 0.085;
   const STORAGE_KEY = "neon-serpent-arena";
 
@@ -403,6 +403,21 @@
     const i = foods.indexOf(f);
     if (i >= 0) foods.splice(i, 1);
   }
+  // Magnet-pulled orbs move — keep their spatial-hash bucket in sync,
+  // or a dragged orb becomes invisible to eat checks.
+  function moveFoodCell(f) {
+    const k = cellKey(f.x, f.y);
+    if (k === f._key) return;
+    const old = foodGrid.get(f._key);
+    if (old) {
+      const i = old.indexOf(f);
+      if (i >= 0) old.splice(i, 1);
+    }
+    let b = foodGrid.get(k);
+    if (!b) { b = []; foodGrid.set(k, b); }
+    b.push(f);
+    f._key = k;
+  }
   function foodsNear(x, y, radius) {
     const out = [];
     const c0x = ((x - radius) / CELL) | 0, c1x = ((x + radius) / CELL) | 0;
@@ -426,7 +441,7 @@
       pulse: rand(0, Math.PI * 2)
     });
   }
-  function spawnDropFood(x, y, value, hue, big) {
+  function spawnDropFood(x, y, value, hue, big, owner) {
     const jitter = big ? 14 : 7;
     const p = clampToWorld(x + rand(-jitter, jitter), y + rand(-jitter, jitter));
     addFood({
@@ -435,7 +450,9 @@
       r: big ? rand(7, 11) : rand(3, 5),
       value,
       hue: hue + rand(-18, 18),
-      pulse: rand(0, Math.PI * 2)
+      pulse: rand(0, Math.PI * 2),
+      own: owner || null,                      // boost drops can't be
+      ownT: owner ? performance.now() + 1200 : 0   // self-eaten right away
     });
   }
   function clampToWorld(x, y) {
@@ -523,7 +540,7 @@
         if (this.boostDrop > 0.16) {
           this.boostDrop = 0;
           const tail = this.segs[this.segs.length - 1];
-          spawnDropFood(tail.x, tail.y, 0.6, this.hue, false);
+          spawnDropFood(tail.x, tail.y, 0.6, this.hue, false, this);
         }
       }
 
@@ -583,6 +600,7 @@
       const near = foodsNear(h.x, h.y, magnet);
       for (const f of near) {
         if (f.dead) continue;
+        if (f.own === this && performance.now() < f.ownT) continue;
         const d2 = dist2(h.x, h.y, f.x, f.y);
         const eatR = this.radius + f.r;
         if (d2 < eatR * eatR) {
@@ -592,11 +610,14 @@
           if (this === player) audio.eat();
           removeFood(f);
         } else if (d2 < magnet * magnet) {
-          // orbs get pulled toward a nearby mouth
+          // Orbs accelerate toward the mouth — gentle at the edge of the
+          // field, snapping in fast once close. Actually feelable now.
           const d = Math.sqrt(d2) || 1;
-          const pull = 340 * frameDt / d;
-          f.x += (h.x - f.x) * pull * 0.02;
-          f.y += (h.y - f.y) * pull * 0.02;
+          const t = 1 - d / magnet;
+          const step = (90 + 560 * t * t) * frameDt * (this.fx.magnet > 0 ? 1.6 : 1);
+          f.x += ((h.x - f.x) / d) * Math.min(step, d);
+          f.y += ((h.y - f.y) / d) * Math.min(step, d);
+          moveFoodCell(f);
         }
       }
 
@@ -1258,6 +1279,20 @@
         }
       }
 
+      // Visible magnet field while the power-up is active.
+      if (s === player && s.fx.magnet > 0) {
+        const mr = s.radius * MAGNET_RANGE * 2.6 * cam.zoom;
+        ctx.save();
+        ctx.strokeStyle = "rgba(255, 130, 170, 0.35)";
+        ctx.setLineDash([14, 10]);
+        ctx.lineDashOffset = -time * 0.06;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, mr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // The arena leader wears a golden crown (bosses bring their own dread).
       if (s === leader && !s.isBoss) {
         const cw = Math.max(r * 0.55, 7);
@@ -1371,6 +1406,13 @@
     lbTimer = 0.5;
     renderEffects();
     if (player) scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
+
+    // Long runs: drop dead bosses/phantoms from the roster (bots respawn,
+    // these don't — they'd pile up forever otherwise).
+    for (let i = snakes.length - 1; i >= 0; i--) {
+      const s = snakes[i];
+      if (s.dead && (s.isBoss || s.phantom)) snakes.splice(i, 1);
+    }
 
     const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => b.score - a.score);
     leader = ranked.find(s => !s.isBoss) || null;
@@ -1725,13 +1767,20 @@
   updateMuteUI();
 
   el("reset-btn").addEventListener("click", (e) => {
-    if (!confirm("Reset saved progress? This clears your best score, name and skin.")) return;
+    if (!confirm("Reset saved progress? This clears your best score, name, skins and stats.")) return;
     for (const k of Object.keys(prefs)) delete prefs[k];
+    // Re-link the live stats/unlocks objects — otherwise future progress
+    // mutates orphaned objects and is never persisted again.
+    for (const k of Object.keys(stats)) stats[k] = 0;
+    for (const k of Object.keys(unlocked)) delete unlocked[k];
+    prefs.stats = stats;
+    prefs.unlocked = unlocked;
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
     el("nickname").value = "";
     selectedSkin = 0;
     buildSkinPicker();
     showBest();
+    renderDaily();
     flashBtn(e.currentTarget, "Progress cleared");
   });
 
@@ -1857,6 +1906,7 @@
     get snakes() { return snakes; },
     get boss() { return boss; },
     get phantom() { return phantom; },
+    get foods() { return foods; },
     spawnBoss,
     spawnPhantom,
     stats
