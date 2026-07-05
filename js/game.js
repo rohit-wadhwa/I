@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.6.0";
+  const VERSION = "1.6.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -18,7 +18,8 @@
   const TURN_RATE = 4.4;           // rad/s
   const BOOST_DRAIN = 5;           // length/s spent while boosting
   const MIN_BOOST_LEN = 16;        // can't boost below this length
-  const MAGNET_RANGE = 5.2;        // orb attraction range, in head radii
+  const MOUTH_RANGE = 2.6;         // innate suction range, in head radii (subtle)
+  const MAGNET_RANGE = 5.2;        // 🧲 power-up range, in head radii (×2.6 below)
   const CAM_LERP = 0.085;
   const STORAGE_KEY = "neon-serpent-arena";
 
@@ -598,7 +599,10 @@
     eat() {
       if (this.phantom) return;   // ghosts don't feed
       const h = this.head;
-      const magnet = this.radius * MAGNET_RANGE * (this.fx.magnet > 0 ? 2.6 : 1);
+      // Innate suction is a short mouth-vacuum; the 🧲 power-up is the
+      // real long-range magnet. Two clearly different experiences.
+      const magnetOn = this.fx.magnet > 0;
+      const magnet = this.radius * (magnetOn ? MAGNET_RANGE * 2.6 : MOUTH_RANGE);
       const near = foodsNear(h.x, h.y, magnet);
       for (const f of near) {
         if (f.dead) continue;
@@ -616,7 +620,9 @@
           // field, snapping in fast once close. Actually feelable now.
           const d = Math.sqrt(d2) || 1;
           const t = 1 - d / magnet;
-          const step = (90 + 560 * t * t) * frameDt * (this.fx.magnet > 0 ? 1.6 : 1);
+          const step = magnetOn
+            ? (140 + 620 * t * t) * frameDt   // power-up: fast, long reach
+            : (50 + 260 * t * t) * frameDt;   // innate: gentle mouth suction
           f.x += ((h.x - f.x) / d) * Math.min(step, d);
           f.y += ((h.y - f.y) / d) * Math.min(step, d);
           moveFoodCell(f);
@@ -1974,6 +1980,7 @@
     spawnBoss,
     spawnPhantom,
     applyPowerup,
+    spawnDropFood,
     stats
   };
 
