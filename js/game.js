@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.9.1";
+  const VERSION = "1.9.2";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -492,10 +492,13 @@
   function spawnDropFood(x, y, value, hue, big, owner) {
     const jitter = big ? 14 : 7;
     const p = clampToWorld(x + rand(-jitter, jitter), y + rand(-jitter, jitter));
+    // Orb size follows its value, so a rich orb from a big serpent looks
+    // fat and a boost-crumb looks small — the visual reads the reward.
+    const r = clamp(2.8 + Math.sqrt(value) * 3.3, 3, 14) * rand(0.9, 1.1);
     addFood({
       x: p.x,
       y: p.y,
-      r: big ? rand(7, 11) : rand(3, 5),
+      r,
       value,
       hue: hue + rand(-18, 18),
       pulse: rand(0, Math.PI * 2),
@@ -836,8 +839,9 @@
       this.dead = true;
       if (killer) killer.kills++;
 
-      // Body bursts into orbs worth most of its mass.
-      const step = Math.max(1, Math.floor(this.segs.length / 60));
+      // Body bursts into orbs worth most of its mass. Bigger serpents
+      // shatter into more, fatter orbs — a visibly richer feast.
+      const step = Math.max(1, Math.floor(this.segs.length / 90));
       for (let i = 0; i < this.segs.length; i += step) {
         const s = this.segs[i];
         spawnDropFood(s.x, s.y, 1.6 * step * 0.55, this.hue, true);
