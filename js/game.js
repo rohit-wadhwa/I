@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "1.3.1";
+  const VERSION = "1.4.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -149,6 +149,7 @@
         unlocked[d.key] = true;
         newly = true;
         showToast("SKIN UNLOCKED — " + d.name.toUpperCase(), "#4de3ff");
+        audio.unlock();
       }
     }
     if (newly) { savePrefs(prefs); buildSkinPicker(); }
@@ -176,6 +177,7 @@
       d.done = true;
       stats.dailies++;
       showToast("DAILY CHALLENGE COMPLETE!", "#ffd75e");
+      audio.unlock();
       checkUnlocks();
     }
     savePrefs(prefs);
@@ -189,6 +191,136 @@
     el("daily-status").textContent = d.done
       ? "Complete ✓"
       : Math.floor(Math.min(d.progress, t.target)).toLocaleString() + " / " + t.target.toLocaleString();
+  }
+
+  // ---------- Audio ----------
+  // All SFX are synthesized with the Web Audio API — zero sound files.
+  // The context is created lazily on the first user gesture (autoplay policy).
+  const audio = {
+    ctx: null,
+    master: null,
+    muted: !!prefs.muted,
+    boostGain: null,
+    lastEat: 0,
+
+    ensure() {
+      if (this.ctx) return true;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = this.muted ? 0 : 0.5;
+        this.master.connect(this.ctx.destination);
+        // Looped noise through a bandpass = the boost whoosh.
+        const len = this.ctx.sampleRate;
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 900;
+        bp.Q.value = 0.8;
+        this.boostGain = this.ctx.createGain();
+        this.boostGain.gain.value = 0;
+        src.connect(bp); bp.connect(this.boostGain); this.boostGain.connect(this.master);
+        src.start();
+        return true;
+      } catch { return false; }
+    },
+    resume() {
+      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+    },
+    setMuted(m) {
+      this.muted = m;
+      prefs.muted = m;
+      savePrefs(prefs);
+      if (this.master) this.master.gain.value = m ? 0 : 0.5;
+      updateMuteUI();
+    },
+    tone(freq, dur, opts = {}) {
+      if (!this.ctx || this.muted) return;
+      const { type = "sine", vol = 0.22, delay = 0, slide = 0 } = opts;
+      const t0 = this.ctx.currentTime + delay;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    },
+    thump(freq, dur, opts = {}) {
+      if (!this.ctx || this.muted) return;
+      const { vol = 0.3, delay = 0 } = opts;
+      const t0 = this.ctx.currentTime + delay;
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      o.frequency.exponentialRampToValueAtTime(Math.max(25, freq * 0.3), t0 + dur);
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    },
+    setBoost(on) {
+      if (!this.ctx || !this.boostGain) return;
+      const target = on && !this.muted ? 0.07 : 0;
+      this.boostGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.08);
+    },
+
+    eat() {
+      const now = performance.now();
+      if (now - this.lastEat < 50) return;   // don't machine-gun blips
+      this.lastEat = now;
+      this.tone(480 + Math.random() * 340, 0.08, { type: "triangle", vol: 0.1, slide: 180 });
+    },
+    powerup() {
+      [660, 880, 1320].forEach((f, i) => this.tone(f, 0.12, { type: "triangle", vol: 0.16, delay: i * 0.07 }));
+    },
+    evolve() {
+      [392, 494, 587, 784].forEach((f, i) => this.tone(f, 0.16, { type: "square", vol: 0.09, delay: i * 0.09 }));
+    },
+    kill() {
+      this.thump(140, 0.3, { vol: 0.35 });
+      this.tone(300, 0.2, { type: "sawtooth", vol: 0.1, slide: -180 });
+    },
+    death() {
+      this.tone(400, 0.7, { type: "sawtooth", vol: 0.18, slide: -330 });
+      this.thump(90, 0.6, { vol: 0.4, delay: 0.05 });
+    },
+    bossSpawn() {
+      this.tone(72, 0.9, { type: "sawtooth", vol: 0.25 });
+      this.tone(108, 0.9, { type: "sawtooth", vol: 0.18, delay: 0.05 });
+    },
+    bossHit() {
+      this.thump(120, 0.35, { vol: 0.4 });
+      this.tone(520, 0.1, { type: "square", vol: 0.1, slide: -200 });
+    },
+    bossDown() {
+      [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.2, { type: "triangle", vol: 0.16, delay: i * 0.11 }));
+    },
+    unlock() {
+      [1047, 1568].forEach((f, i) => this.tone(f, 0.18, { type: "sine", vol: 0.15, delay: i * 0.09 }));
+    },
+    click() {
+      this.tone(900, 0.04, { type: "square", vol: 0.06 });
+    }
+  };
+
+  function updateMuteUI() {
+    const icon = audio.muted ? "🔇" : "🔊";
+    const mb = el("mute-btn");
+    if (mb) mb.textContent = icon;
+    const mm = el("mute-btn-menu");
+    if (mm) mm.textContent = icon + " Sound " + (audio.muted ? "off" : "on");
   }
 
   // ---------- 3D sphere sprites ----------
@@ -413,6 +545,7 @@
           spawnBurst(h.x, h.y, this.hue);
           if (this === player) {
             showEvolveBanner(TIERS[tierNow].name);
+            audio.evolve();
             if (tierNow > stats.maxTier) { stats.maxTier = tierNow; checkUnlocks(); savePrefs(prefs); }
           }
         }
@@ -436,6 +569,7 @@
         if (d2 < eatR * eatR) {
           this.len = Math.min(this.len + f.value, 520);
           this.orbsEaten++;
+          if (this === player) audio.eat();
           removeFood(f);
         } else if (d2 < magnet * magnet) {
           // orbs get pulled toward a nearby mouth
@@ -554,6 +688,7 @@
         this.len = Math.max(60, this.len * 0.78);
         spawnBurst(this.head.x, this.head.y, this.hue);
         showToast("BOSS HIT — " + this.hp + " HP LEFT", "#ffd75e");
+        audio.bossHit();
         return;
       }
       // A shield charge cheats death once.
@@ -581,10 +716,14 @@
       }
       spawnBurst(this.head.x, this.head.y, this.hue);
 
+      if (killer === player && this !== player) audio.kill();
+
       if (this === player) {
+        audio.death();
         onPlayerDeath(cause);
       } else if (this.isBoss) {
         showToast("BOSS DEFEATED!", "#4de3ff");
+        audio.bossDown();
         bossTimer = rand(80, 130);
         if (killer === player) {
           stats.bossKills++;
@@ -636,6 +775,7 @@
     boss.len = 190;
     snakes.push(boss);
     showToast("⚠ " + boss.name.slice(2) + " HAS ENTERED THE ARENA", "#ff4d6d");
+    audio.bossSpawn();
   }
 
   // ---------- Power-ups ----------
@@ -660,6 +800,7 @@
     else if (k === "magnet") snake.fx.magnet = 10;
     else if (k === "shield") snake.shieldCharge = true;
     else if (k === "feast") snake.len = Math.min(snake.len + 20, 520);
+    if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
   }
   function drawPowerups(time) {
@@ -745,10 +886,14 @@
     menu.classList.add("hidden");
     deathScreen.classList.add("hidden");
     hud.classList.remove("hidden");
+    audio.ensure();
+    audio.resume();
+    audio.click();
   }
 
   function onPlayerDeath(cause) {
     running = false;
+    audio.setBoost(false);
     const score = player.score;
     if (score > (prefs.best || 0)) prefs.best = score;
 
@@ -1168,6 +1313,7 @@
       for (const s of snakes) s.update(dt);
       checkCollisions();
       updateParticles(dt);
+      audio.setBoost(player.boosting && player.len > MIN_BOOST_LEN);
 
       // Keep the arena stocked with orbs and power-ups.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
@@ -1433,6 +1579,16 @@
   });
 
   el("restart-btn").addEventListener("click", () => { if (running) startGame(); });
+
+  // Sound: lazy-init on first gesture; mute toggles in HUD, menu and via M key.
+  window.addEventListener("pointerdown", () => { audio.ensure(); audio.resume(); }, { once: true });
+  const toggleMute = () => { audio.ensure(); audio.setMuted(!audio.muted); if (!audio.muted) audio.click(); };
+  el("mute-btn").addEventListener("click", toggleMute);
+  el("mute-btn-menu").addEventListener("click", toggleMute);
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "KeyM" && document.activeElement !== el("nickname")) toggleMute();
+  });
+  updateMuteUI();
 
   el("reset-btn").addEventListener("click", (e) => {
     if (!confirm("Reset saved progress? This clears your best score, name and skin.")) return;

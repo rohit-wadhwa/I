@@ -456,6 +456,7 @@ body.touch #boost-hint { display: none; }
   display: flex;
   gap: 8px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .ghost-btn.small {
