@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+// End-to-end / invariant tests for Neon Serpent Arena.
+//
+// Runs the ACTUAL shipped index.html (with its real css/js links) in headless
+// Chromium and asserts the non-negotiable invariants from CLAUDE.md plus the
+// recent gameplay features. No test framework — a tiny assert + a nonzero exit
+// on failure, matching the project's vanilla, no-build ethos.
+//
+// Requires Playwright. From the test/ dir:  npm install && npm test
+// Uses the preinstalled Chromium at /opt/pw-browsers/chromium when present.
+//
+// Harness note (from CLAUDE.md): page.evaluate can throw
+// "Right-hand side of 'instanceof' is not an object" when RETURNING objects in
+// this sandbox. We therefore only ever return primitives / JSON strings from
+// evaluate, never live objects.
+
+const path = require("path");
+let chromium;
+try {
+  ({ chromium } = require("playwright"));
+} catch (e) {
+  console.error("Playwright not installed. Run `npm install` in test/ first.");
+  process.exit(2);
+}
+
+const INDEX = "file://" + path.resolve(__dirname, "..", "index.html");
+const EXEC = "/opt/pw-browsers/chromium";
+const fs = require("fs");
+const EXPECTED_VERSION = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "..", "version.json"), "utf8")
+).version;
+
+let passed = 0;
+const failures = [];
+function check(name, cond, detail) {
+  if (cond) { passed++; console.log("  ✓ " + name); }
+  else { failures.push(name + (detail ? " — " + detail : "")); console.log("  ✗ " + name + (detail ? " — " + detail : "")); }
+}
+
+// Start a fresh run: fill a name, pick a skin, enter the arena.
+async function startGame(page) {
+  await page.fill("#nickname", "Tester");
+  await page.locator(".skin-swatch").nth(2).click();
+  await page.click("#play-btn");
+  await page.waitForTimeout(600);
+}
+
+(async () => {
+  const launchOpts = fs.existsSync(EXEC) ? { executablePath: EXEC } : {};
+  const browser = await chromium.launch(launchOpts);
+
+  const jsErrors = [];
+  const page = await browser.newPage({ viewport: { width: 1200, height: 820 } });
+  page.on("pageerror", (e) => jsErrors.push("pageerror: " + e.message));
+  page.on("console", (m) => { if (m.type() === "error") jsErrors.push("console: " + m.text()); });
+
+  await page.goto(INDEX);
+  await page.waitForTimeout(1200);
+
+  // ---- Menu ----
+  console.log("\nMenu & version display");
+  const skins = await page.locator(".skin-swatch").count();
+  check("14 skin swatches render", skins === 14, "got " + skins);
+  const menuVer = (await page.textContent("#version-tag")).trim();
+  check("menu footer shows v" + EXPECTED_VERSION, menuVer.startsWith("v" + EXPECTED_VERSION), "got '" + menuVer + "'");
+
+  // ---- Wide-screen menu is a proper page (>=860px) ----
+  console.log("\nWide-screen menu layout");
+  const layout = JSON.parse(await page.evaluate(() => {
+    const g = document.getElementById("menu-stats");
+    const cards = ["level-card", "difficulty-block", "daily-card"].map((id) => document.getElementById(id));
+    const tops = cards.filter(Boolean).map((el) => Math.round(el.getBoundingClientRect().top));
+    return JSON.stringify({
+      display: g ? getComputedStyle(g).display : "none",
+      cardWidth: Math.round(document.querySelector(".menu-card").getBoundingClientRect().width),
+      sameRow: tops.length === 3 && tops.every((t) => Math.abs(t - tops[0]) < 4)
+    });
+  }));
+  check("stats laid out as a grid", layout.display === "grid", "display=" + layout.display);
+  check("menu card widened (>=760px)", layout.cardWidth >= 760, "width=" + layout.cardWidth);
+  check("Level/Intensity/Daily on one row", layout.sameRow === true);
+
+  // ---- Start a run ----
+  console.log("\nGameplay start");
+  await startGame(page);
+  check("HUD visible after Enter the Arena", await page.locator("#hud").isVisible());
+  const hudVer = (await page.textContent("#hud-version")).trim();
+  check("in-game HUD shows v" + EXPECTED_VERSION, hudVer === "v" + EXPECTED_VERSION, "got '" + hudVer + "'");
+  check("test hooks exposed on window.__ns", await page.evaluate(() => !!window.__ns && !!__ns.player));
+
+  // ---- Late-game escalation (v2.7.0): boss toughness scales with score ----
+  console.log("\nLate-game escalation");
+  const boss = JSON.parse(await page.evaluate(() => {
+    const probe = (pts) => { __ns.player.scorePoints = pts; __ns.spawnBoss(); return { hp: __ns.boss.hp, len: Math.round(__ns.boss.len) }; };
+    return JSON.stringify({ a: probe(0), b: probe(7500), c: probe(15000), d: probe(40000) });
+  }));
+  check("boss starts at 3 HP", boss.a.hp === 3, JSON.stringify(boss.a));
+  check("boss HP climbs with score", boss.a.hp < boss.b.hp && boss.b.hp < boss.c.hp, JSON.stringify(boss));
+  check("boss HP caps at 6", boss.d.hp === 6, "hp=" + boss.d.hp);
+  check("boss grows longer with score", boss.a.len < boss.c.len && boss.c.len <= boss.d.len, JSON.stringify(boss));
+
+  // milestone toast fires when crossing a threshold in a non-Kid arena
+  await page.evaluate(() => { __ns.player.scorePoints = 0; });
+  await page.waitForTimeout(120);
+  await page.evaluate(() => { __ns.player.scorePoints = 5200; });
+  await page.waitForTimeout(250);
+  const toastTxt = await page.locator("#toast").textContent().catch(() => "");
+  check("milestone toast fires at 5K", /RESTLESS|PREDATOR|LEGEND/.test(toastTxt), "toast='" + toastTxt + "'");
+
+  // ---- Self-heal: an "exploded" chain can never persist (the core robustness rule) ----
+  console.log("\nSelf-healing physics");
+  await page.evaluate(() => {
+    __ns.player.scorePoints = 0;
+    __ns.player.segs[0].x = NaN;            // corrupt the head
+    __ns.player.segs[0].y = NaN;
+    if (__ns.player.segs[5]) __ns.player.segs[5].x = 9e12;   // blow a segment far away
+  });
+  await page.waitForTimeout(300); // a few frames of the draw-path sanitize pass
+  const healed = JSON.parse(await page.evaluate(() => {
+    const s = __ns.player.segs;
+    let maxGap = 0, allFinite = true;
+    for (let i = 0; i < s.length; i++) {
+      if (!isFinite(s[i].x) || !isFinite(s[i].y)) allFinite = false;
+      if (i > 0) maxGap = Math.max(maxGap, Math.hypot(s[i].x - s[i - 1].x, s[i].y - s[i - 1].y));
+    }
+    return JSON.stringify({ allFinite, maxGap: Math.round(maxGap) });
+  }));
+  check("all segment coords finite after NaN injection", healed.allFinite, JSON.stringify(healed));
+  check("no lingering exploded gap", healed.maxGap < 500, "maxGap=" + healed.maxGap);
+
+  // ---- Food is hard-capped (v2.6.1 memory/battery fix) ----
+  console.log("\nFood cap (memory/battery)");
+  await page.evaluate(() => {
+    // flood the world with drops well past the ceiling
+    for (let i = 0; i < 2500; i++) {
+      const a = i * 0.1, r = 200 + (i % 400);
+      __ns.spawnDropFood(Math.cos(a) * r, Math.sin(a) * r, 3, (i * 7) % 360);
+    }
+  });
+  await page.waitForTimeout(400); // let the cull run in the game loop
+  const foodCount = await page.evaluate(() => __ns.foods.length);
+  check("food count capped at <=1300", foodCount <= 1300, "foods=" + foodCount);
+
+  // ---- Score never decreases; length stays capped (score != length) ----
+  console.log("\nScore / length decoupling");
+  const decouple = JSON.parse(await page.evaluate(() => {
+    __ns.player.scorePoints = 50000;
+    const scoreBefore = __ns.player.score;
+    const feast = { type: { key: "feast", hue: 140 }, x: __ns.player.head.x, y: __ns.player.head.y };
+    for (let i = 0; i < 60; i++) __ns.applyPowerup(__ns.player, feast); // each bumps len + score
+    return JSON.stringify({ len: Math.round(__ns.player.len), score: __ns.player.score, scoreBefore });
+  }));
+  check("length capped at 520", decouple.len <= 520, "len=" + decouple.len);
+  check("score keeps rising past length cap", decouple.score >= decouple.scoreBefore, JSON.stringify(decouple));
+
+  // ---- No JS errors the whole run ----
+  console.log("\nRuntime health");
+  check("no uncaught JS/console errors", jsErrors.length === 0, jsErrors.join(" | "));
+
+  await browser.close();
+
+  console.log("\n" + "=".repeat(48));
+  if (failures.length) {
+    console.log(passed + " passed, " + failures.length + " FAILED:");
+    for (const f of failures) console.log("  ✗ " + f);
+    process.exit(1);
+  }
+  console.log("All " + passed + " checks passed ✓  (v" + EXPECTED_VERSION + ")");
+  process.exit(0);
+})().catch((e) => { console.error("harness error:", e); process.exit(2); });
