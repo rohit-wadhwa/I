@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.9.0";
+  const VERSION = "2.9.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -1326,20 +1326,43 @@
   let critterTimer = rand(8, 16);
   const CRITTER_R = 15, CRITTER_FLEE = 250, CRITTER_MAX = 2;
 
+  // A little bestiary of prey — not just a mouse. Bigger, faster ones pay more;
+  // the golden rat is a rare jackpot. `w` = spawn weight, `size` = draw scale,
+  // `spd` = flee-speed multiplier.
+  const PREY_TYPES = [
+    { emoji: "🐀", name: "Rat",     score: 400, len: 12, size: 1.0,  spd: 1.0,  w: 5 },
+    { emoji: "🐸", name: "Frog",    score: 450, len: 14, size: 1.05, spd: 1.15, w: 4 },
+    { emoji: "🐤", name: "Chick",   score: 400, len: 12, size: 0.95, spd: 1.1,  w: 4 },
+    { emoji: "🐹", name: "Hamster", score: 420, len: 13, size: 1.0,  spd: 0.95, w: 4 },
+    { emoji: "🐇", name: "Rabbit",  score: 600, len: 16, size: 1.15, spd: 1.35, w: 3 },
+    { emoji: "🦎", name: "Lizard",  score: 500, len: 15, size: 1.0,  spd: 1.25, w: 3 },
+    { emoji: "🐛", name: "Grub",    score: 300, len: 9,  size: 0.85, spd: 0.7,  w: 3 },
+    { emoji: "🐰", name: "Bunny",   score: 600, len: 16, size: 1.15, spd: 1.3,  w: 2 },
+    { emoji: "🌟🐀", name: "Golden Rat", score: 900, len: 20, size: 1.2, spd: 1.4, w: 1, gold: true }
+  ];
+  const PREY_WEIGHT = PREY_TYPES.reduce((a, t) => a + t.w, 0);
+  function pickPrey() {
+    let r = rand(0, PREY_WEIGHT);
+    for (const t of PREY_TYPES) { if ((r -= t.w) <= 0) return t; }
+    return PREY_TYPES[0];
+  }
+
   function spawnCritter() {
     const p = randomWorldPoint(500);
-    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, life: 20, bob: rand(0, 6.28) });
+    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, life: 20, bob: rand(0, 6.28), type: pickPrey() });
   }
   function catchCritter(s, c) {
-    spawnBurst(c.x, c.y, 22);
+    const t = c.type || PREY_TYPES[0];
+    spawnBurst(c.x, c.y, t.gold ? 48 : 22);
     if (s === player) {
-      player.len = Math.min(player.len + 12, 520);
-      player.scorePoints += 400;
+      player.len = Math.min(player.len + t.len, 520);
+      player.scorePoints += t.score;
       player.orbsEaten++;
       audio.critter();
-      showToast("🐀 TASTY PREY!  +400", "#ffca6b");
+      showToast(t.emoji + " " + (t.gold ? "JACKPOT — " : "TASTY ") + t.name.toUpperCase() + "!  +" + t.score,
+        t.gold ? "#ffd75e" : "#ffca6b");
     } else {
-      s.len = Math.min(s.len + 8, 520);   // bots get a modest nibble
+      s.len = Math.min(s.len + Math.round(t.len * 0.6), 520);   // bots get a modest nibble
     }
   }
   function updateCritters(dt) {
@@ -1374,7 +1397,7 @@
         ax = Math.cos(c.dir); ay = Math.sin(c.dir);
         c.panic = Math.max(0, c.panic - dt);
       }
-      const spd = c.panic > 0 ? 340 : 115;
+      const spd = (c.panic > 0 ? 340 : 115) * ((c.type && c.type.spd) || 1);
       c.vx += (ax * spd - c.vx) * Math.min(1, dt * 4);
       c.vy += (ay * spd - c.vy) * Math.min(1, dt * 4);
       c.x += c.vx * dt; c.y += c.vy * dt;
@@ -1392,21 +1415,25 @@
     for (const c of critters) {
       const p = worldToScreen(c.x, c.y);
       if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;
-      const size = Math.max(26 * cam.zoom, 15);
+      const t = c.type || PREY_TYPES[0];
+      // Bigger so it clearly reads as a creature, not a dot.
+      const size = Math.max(40 * cam.zoom, 24) * t.size;
       const face = Math.atan2(c.vy, c.vx);
       const bob = Math.sin(time * 0.02 + c.bob) * size * 0.08;
+      const gold = t.gold;
       ctx.save();
       ctx.translate(p.x, p.y + bob);
-      // warm glow so prey reads as a target worth chasing
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.3);
-      g.addColorStop(0, "rgba(255, 200, 120, 0.32)");
-      g.addColorStop(1, "rgba(255, 200, 120, 0)");
+      // warm glow (gold for the jackpot) so prey reads as a target worth chasing
+      const glowR = size * (gold ? 1.6 : 1.25);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR);
+      g.addColorStop(0, gold ? "rgba(255, 215, 94, 0.55)" : "rgba(255, 200, 120, 0.32)");
+      g.addColorStop(1, gold ? "rgba(255, 215, 94, 0)" : "rgba(255, 200, 120, 0)");
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(0, 0, size * 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI * 2); ctx.fill();
       if (Math.cos(face) < 0) ctx.scale(-1, 1);   // face travel direction
       ctx.font = size + "px serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("🐀", 0, 0);
+      ctx.fillText(t.emoji, 0, 0);
       ctx.restore();
     }
   }

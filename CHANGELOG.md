@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.9.1
+- **More prey, bigger and varied** (feedback: the rat was small and same-y) — prey is now noticeably larger and comes in a whole bestiary: 🐀 rat, 🐸 frog, 🐤 chick, 🐹 hamster, 🐇 rabbit, 🦎 lizard, 🐛 grub, 🐰 bunny, and a rare **🌟 golden rat jackpot** (+900). Faster/bigger critters are worth more; the catch toast now names what you caught.
+
 ## 2.9.0
 - **Running prey (🐀)** — live rats now scurry into the arena and **flee the nearest serpent**. Chase one down and catch it for a tasty **+400 score and +12 length** (a satisfying squeak). Rare (max 2 at a time) so it stays a treat, not a staple; it pings the minimap so you can hunt it. On theme — a python catching a rat. Bots hunt it too.
 - **Pointed python tail** — every serpent's tail now tapers to a fine point instead of ending in a blunt bead.

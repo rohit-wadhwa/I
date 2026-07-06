@@ -165,6 +165,7 @@ async function startGame(page) {
     __ns.spawnCritter();
     const spawned = __ns.critters.length;
     const c = __ns.critters[0], h = __ns.player.head;
+    c.type = { emoji: "🐀", name: "Rat", score: 400, len: 12, size: 1, spd: 1 };  // deterministic reward
     // Park it INSIDE the flee radius (but outside the mouth) and tick: it flees.
     c.x = h.x + 150; c.y = h.y; c.vx = 0; c.vy = 0;
     const d0 = Math.hypot(c.x - h.x, c.y - h.y);
