@@ -4,9 +4,10 @@
   "private": true,
   "description": "Dev-only test harness for Neon Serpent Arena. The game itself ships zero dependencies; these tests are never bundled.",
   "scripts": {
-    "test": "node check-version.js && node e2e.js",
+    "test": "node check-version.js && node e2e.js && node responsive.js",
     "version:check": "node check-version.js",
     "e2e": "node e2e.js",
+    "responsive": "node responsive.js",
     "bundle": "node build-bundle.js"
   },
   "devDependencies": {

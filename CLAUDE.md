@@ -42,16 +42,27 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
   We removed the Warp Gate power-up for working against the core skill.
 
 ## Testing (important)
-- Verify changes headlessly with Playwright + `/opt/pw-browsers/chromium`
-  (install playwright in the scratchpad). Build a single-file bundle from the
-  three source files first (see recent test scripts).
+- A committed dev harness lives in **`test/`** (dev-only; the game itself stays
+  zero-dependency). From `test/`: `npm install` once, then `npm test` runs the
+  version-consistency check **and** the headless-Chromium e2e suite. Pieces:
+  `npm run version:check` (pure Node), `npm run e2e`, `npm run bundle`.
+  - `check-version.js` asserts the four version strings agree (see conventions).
+  - `e2e.js` drives the real shipped `index.html` over `file://` and asserts the
+    invariants + features (menu, escalation, self-heal, food cap, score≠length,
+    challenges ladder). **Add a check here for every new feature/invariant.**
+  - `responsive.js` renders the menu across 16 device sizes and fails on any
+    horizontal overflow / JS error (run after any CSS/layout change).
+  - `build-bundle.js` inlines css/js into one self-contained file (the shareable
+    preview / a standalone sanity check).
+- It uses the preinstalled Chromium at `/opt/pw-browsers/chromium` when present.
 - `window.__ns` exposes test hooks: `player, snakes, boss, phantom, foods, shards,
   spawnBoss, spawnPhantom, spawnShard, applyPowerup, spawnDropFood,
-  killCueIntensity, stats, unlocked`.
+  killCueIntensity, stats, unlocked, CHALLENGES, challengesDone, checkChallenges`.
+  Note `player.score` is a getter — set `player.scorePoints` to fake a score.
 - Known harness quirk: Playwright's `page.evaluate` sometimes throws
   "Right-hand side of 'instanceof' is not an object" when RETURNING objects in
-  this sandbox. Work around it by writing results to `document.title` and reading
-  with `page.title()` (strings are safe).
+  this sandbox. Return primitives / `JSON.stringify` strings (or write to
+  `document.title` and read with `page.title()`) — never a live object.
 
 ## Feature map (as of v2.8.0)
 Evolution (5 tiers) · boost (burns mass) · power-ups (⚡ overdrive, 🧲 magnet,
