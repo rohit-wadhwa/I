@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.9.1";
+  const VERSION = "2.9.2";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -1324,7 +1324,7 @@
   // fun chase, but rare (max 2) so it stays a treat, not a food staple.
   const critters = [];
   let critterTimer = rand(8, 16);
-  const CRITTER_R = 15, CRITTER_FLEE = 250, CRITTER_MAX = 2;
+  const CRITTER_R = 22, CRITTER_FLEE = 220, CRITTER_MAX = 2;
 
   // A little bestiary of prey — not just a mouse. Bigger, faster ones pay more;
   // the golden rat is a rare jackpot. `w` = spawn weight, `size` = draw scale,
@@ -1349,7 +1349,7 @@
 
   function spawnCritter() {
     const p = randomWorldPoint(500);
-    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, life: 20, bob: rand(0, 6.28), type: pickPrey() });
+    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, stam: 2.6, life: 22, bob: rand(0, 6.28), type: pickPrey() });
   }
   function catchCritter(s, c) {
     const t = c.type || PREY_TYPES[0];
@@ -1382,22 +1382,29 @@
         if (d < nd) { nd = d; near = s; }
       }
       if (near) {
-        const eatR = near.radius + CRITTER_R;
+        const eatR = near.radius + CRITTER_R + 8;   // a small lunge/grab window
         if (nd < eatR * eatR) { critters.splice(i, 1); catchCritter(near, c); continue; }
       }
       // steer: flee a close serpent, otherwise wander
-      let ax, ay;
+      let ax, ay, fleeing = false;
       if (near && nd < CRITTER_FLEE * CRITTER_FLEE) {
         const d = Math.sqrt(nd) || 1;
         ax = (c.x - near.head.x) / d; ay = (c.y - near.head.y) / d;
-        c.panic = 1;
+        c.panic = 1; fleeing = true;
       } else {
         c.wander -= dt;
         if (c.wander <= 0) { c.dir += rand(-1, 1); c.wander = rand(0.4, 1.1); }
         ax = Math.cos(c.dir); ay = Math.sin(c.dir);
         c.panic = Math.max(0, c.panic - dt);
       }
-      const spd = (c.panic > 0 ? 340 : 115) * ((c.type && c.type.spd) || 1);
+      // Stamina: prey sprints, then tires so a determined chase (esp. with a
+      // boost) always closes in. Speeds sit BELOW the player's boost (236) so
+      // prey is fast but never uncatchable — the old 340+ made it impossible.
+      if (fleeing) c.stam = Math.max(0, c.stam - dt);
+      else c.stam = Math.min(2.6, c.stam + dt * 0.7);
+      const tired = c.stam <= 0;
+      const base = c.panic > 0 ? (tired ? 95 : 165) : 62;
+      const spd = base * ((c.type && c.type.spd) || 1);
       c.vx += (ax * spd - c.vx) * Math.min(1, dt * 4);
       c.vy += (ay * spd - c.vy) * Math.min(1, dt * 4);
       c.x += c.vx * dt; c.y += c.vy * dt;

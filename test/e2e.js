@@ -183,6 +183,29 @@ async function startGame(page) {
   check("prey is caught on contact", prey.remaining === 0);
   check("catching prey rewards score + length", prey.dScore >= 400 && prey.dLen >= 12, JSON.stringify(prey));
 
+  // v2.9.2: the FASTEST prey must be catchable by a boost-speed pursuer (it was
+  // previously faster than the player and impossible to catch). Simulate a
+  // boosting chase by advancing the head toward the prey at boost speed (236).
+  const chase = JSON.parse(await page.evaluate(() => {
+    __ns.critters.length = 0;
+    __ns.spawnCritter();
+    const c = __ns.critters[0], h = __ns.player.head;
+    c.type = { emoji: "🐇", name: "Rabbit", score: 600, len: 16, size: 1.1, spd: 1.4 }; // fastest tier
+    c.x = h.x + 260; c.y = h.y; c.stam = 2.6;
+    const BOOST = 236, dt = 0.05;
+    let caught = false, ticks = 0;
+    for (let i = 0; i < 200; i++) {   // up to 10s
+      if (__ns.critters.length === 0) { caught = true; ticks = i; break; }
+      const cr = __ns.critters[0];
+      const a = Math.atan2(cr.y - h.y, cr.x - h.x);
+      h.x += Math.cos(a) * BOOST * dt; h.y += Math.sin(a) * BOOST * dt;
+      __ns.updateCritters(dt);
+    }
+    return JSON.stringify({ caught, seconds: +(ticks * 0.05).toFixed(1) });
+  }));
+  check("fastest prey is catchable while boosting", chase.caught === true, JSON.stringify(chase));
+  check("prey caught in a reasonable chase (<8s)", chase.caught && chase.seconds < 8, JSON.stringify(chase));
+
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");
   const ch = JSON.parse(await page.evaluate(() => {

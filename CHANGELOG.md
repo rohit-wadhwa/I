@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.9.2
+- **Prey is now actually catchable** (bug fix) — the prey flee-speed was set on the wrong scale (340–476 px/s) while the player only moves 132 px/s (236 boosting), so prey literally outran a boosting snake and could never be caught. Flee speeds are retuned **below boost speed**, prey now **tires after sprinting** (so a determined chase closes in), and the catch hitbox got a small lunge window. Verified: a boosting player catches even the fastest rabbit/golden-rat in ~4s (grub ~1s). Added a test that fails if any prey is ever faster than a boosting pursuer.
+
 ## 2.9.1
 - **More prey, bigger and varied** (feedback: the rat was small and same-y) — prey is now noticeably larger and comes in a whole bestiary: 🐀 rat, 🐸 frog, 🐤 chick, 🐹 hamster, 🐇 rabbit, 🦎 lizard, 🐛 grub, 🐰 bunny, and a rare **🌟 golden rat jackpot** (+900). Faster/bigger critters are worth more; the catch toast now names what you caught.
 
