@@ -7,9 +7,10 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.6.0";
+  const VERSION = "2.6.1";
   const WORLD_R = 2600;            // arena radius
-  const FOOD_COUNT = 620;          // ambient orbs kept in the world
+  const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
+  const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
   const BOT_COUNT = 13;
   const START_LEN = 12;            // starting segment count
   const SEG_SPACING = 5;           // px between segments (pre-scale)
@@ -491,6 +492,20 @@
     }
     const i = foods.indexOf(f);
     if (i >= 0) foods.splice(i, 1);
+  }
+  // Remove the n oldest orbs (front of the array) in one batch, keeping the
+  // spatial hash in sync. Oldest = earliest spawned, usually far/stale.
+  function cullOldestFood(n) {
+    const removed = foods.splice(0, n);
+    for (const f of removed) {
+      f.dead = true;
+      const bucket = foodGrid.get(f._key);
+      if (bucket) {
+        const bi = bucket.indexOf(f);
+        if (bi >= 0) bucket.splice(bi, 1);
+        if (bucket.length === 0) foodGrid.delete(f._key);
+      }
+    }
   }
   // Magnet-pulled orbs move — keep their spatial-hash bucket in sync,
   // or a dragged orb becomes invisible to eat checks.
@@ -1824,6 +1839,11 @@
     const dt = gap > 250 ? 0 : clamp(gap / 1000, 0, 0.05);
     frameDt = dt;
 
+    // Paused (incl. auto-pause on a backgrounded tab): the scene is frozen
+    // and covered by the overlay, so skip all update AND rendering. This
+    // stops a left-open/paused tab from burning battery redrawing 60×/sec.
+    if (paused) return;
+
     if (running && !paused) {
       // Player steering: head toward the pointer (not in ghost mode).
       if (player) {
@@ -1838,8 +1858,12 @@
       updateParticles(dt);
       audio.setBoost(!!player && player.boosting && player.len > MIN_BOOST_LEN);
 
-      // Keep the arena stocked with orbs and power-ups.
+      // Keep the arena stocked with orbs — with a FLOOR and a CEILING.
+      // Death/boost drops add orbs with no natural limit, so a long game
+      // would grow the food array unbounded (memory + per-frame CPU/battery).
+      // Cap it: cull the oldest surplus orbs once over the ceiling.
       while (foods.length < FOOD_COUNT) spawnAmbientFood();
+      if (foods.length > MAX_FOOD) cullOldestFood(foods.length - MAX_FOOD);
       updatePowerups(dt);
       if (player) updateShards(dt);   // shards only tick during real play
 

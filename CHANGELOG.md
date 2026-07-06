@@ -6,6 +6,11 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.6.1
+- **Memory/battery fix** — the food array had a floor (620) but no ceiling, so death/boost drops grew it unbounded (620 → 4,000+ over a long game), slowly heating the CPU and growing memory. Now hard-capped at 1,300 (oldest surplus culled).
+- **Battery** — a paused tab (incl. auto-pause on a backgrounded tab) now skips all update *and* rendering instead of redrawing 60×/sec.
+- Note: the "exploded snake" seen on a tab left open for a long time is a *stale tab* running pre-2.2 code — a refresh fixes it; the self-heal (2.2.0) makes it impossible on current versions.
+
 ## 2.6.0
 - **👿 Soul Swap** — rare power-up that steals the *size* of the biggest rival near you (score stays yours). Player-favouring: bots that grab it only grow a little, so they can't grief you out of your Leviathan. Eerie soul-swap sound.
 
