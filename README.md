@@ -58,6 +58,7 @@ Glowing rings spawn around the arena — bots hunt them too:
 | 🛡️ Shield | cheat death once (crash or wall), then 2s of invulnerability |
 | 💠 Feast | instant +20 length |
 | 🦎 Chameleon | **rare** — re-colors your snake with the hue most distinct from every nearby serpent; the answer to unreadable same-color brawls |
+| 👿 Soul Swap | **rare** — steal the *size* of the biggest snake near you (they shrink, you grow; your score stays yours). Bots that grab it only grow a little, so they can't steal from you |
 
 Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect them across runs to unlock secret skins.
 

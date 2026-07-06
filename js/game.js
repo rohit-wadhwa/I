@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.5.0";
+  const VERSION = "2.6.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -119,7 +119,8 @@
     { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet",    w: 3 },
     { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield",    w: 2 },
     { key: "feast",     emoji: "💠", hue: 275, label: "Feast",     w: 3 },
-    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 }
+    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 },
+    { key: "soulswap",  emoji: "👿", hue: 285, label: "Soul Swap", w: 1 }
   ];
   const MAX_POWERUPS = 7;
 
@@ -398,6 +399,12 @@
       if (now - (this._lastDrain || 0) < 220) return;
       this._lastDrain = now;
       this.tone(190, 0.12, { type: "sawtooth", vol: 0.07, slide: -60 });
+    },
+    soulswap() {
+      // An eerie downward wail rising into a triumphant swell.
+      this.tone(520, 0.35, { type: "sawtooth", vol: 0.14, slide: -300 });
+      this.tone(180, 0.5, { type: "sawtooth", vol: 0.12, slide: 340, delay: 0.18 });
+      this.tone(660, 0.3, { type: "triangle", vol: 0.12, delay: 0.42 });
     },
     unlock() {
       [1047, 1568].forEach((f, i) => this.tone(f, 0.18, { type: "sine", vol: 0.15, delay: i * 0.09 }));
@@ -1062,8 +1069,36 @@
     else if (k === "shield") snake.shieldCharge = true;
     else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
     else if (k === "chameleon") recolorSnake(snake);
+    else if (k === "soulswap") soulSwap(snake);
     if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
+  }
+
+  // 👿 Soul Swap — steal the SIZE of the biggest rival near you (score stays
+  // yours). Player-favouring: when a bot grabs it, they just grow a little,
+  // so a lucky bot can never grief you out of your Leviathan.
+  function soulSwap(snake) {
+    if (snake !== player) { snake.len = Math.min(snake.len + 15, 520); return; }
+    let target = null, best = -1;
+    for (const o of snakes) {
+      if (o === snake || o.dead || o.isBoss || o.phantom || o.invuln > 0) continue;
+      const d2 = dist2(snake.head.x, snake.head.y, o.head.x, o.head.y);
+      if (d2 < 1000 * 1000 && o.len > best) { best = o.len; target = o; }
+    }
+    if (target && target.len > snake.len + 8) {
+      const mine = snake.len;
+      snake.len = Math.min(target.len, 520);
+      target.len = Math.max(START_LEN, mine);
+      target.invuln = Math.max(target.invuln, 1);   // brief grace for the victim
+      spawnBurst(snake.head.x, snake.head.y, 285);
+      spawnBurst(target.head.x, target.head.y, 285);
+      showToast("👿 SOUL SWAP — you STOLE " + target.name + "'s size!", "#c86bff");
+      audio.soulswap();
+    } else {
+      snake.len = Math.min(snake.len + 15, 520);
+      showToast("👿 No bigger soul near — you grew a little", "#c86bff");
+      audio.soulswap();
+    }
   }
   function drawPowerups(time) {
     for (const pu of powerups) {

@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.6.0
+- **👿 Soul Swap** — rare power-up that steals the *size* of the biggest rival near you (score stays yours). Player-favouring: bots that grab it only grow a little, so they can't grief you out of your Leviathan. Eerie soul-swap sound.
+
 ## 2.5.0
 - In-game version label (bottom-left HUD) and version stamped onto screenshots for easy bug reports
 - Added this CHANGELOG as an audit log
