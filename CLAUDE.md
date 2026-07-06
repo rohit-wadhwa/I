@@ -56,21 +56,23 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
     preview / a standalone sanity check).
 - It uses the preinstalled Chromium at `/opt/pw-browsers/chromium` when present.
 - `window.__ns` exposes test hooks: `player, snakes, boss, phantom, foods, shards,
-  spawnBoss, spawnPhantom, spawnShard, applyPowerup, spawnDropFood,
-  killCueIntensity, stats, unlocked, CHALLENGES, challengesDone, checkChallenges`.
+  critters, spawnBoss, spawnPhantom, spawnShard, spawnCritter, updateCritters,
+  applyPowerup, spawnDropFood, killCueIntensity, stats, unlocked, CHALLENGES,
+  challengesDone, checkChallenges`.
   Note `player.score` is a getter — set `player.scorePoints` to fake a score.
 - Known harness quirk: Playwright's `page.evaluate` sometimes throws
   "Right-hand side of 'instanceof' is not an object" when RETURNING objects in
   this sandbox. Return primitives / `JSON.stringify` strings (or write to
   `document.title` and read with `page.title()`) — never a live object.
 
-## Feature map (as of v2.8.0)
+## Feature map (as of v2.9.0)
 Evolution (5 tiers) · boost (burns mass) · power-ups (⚡ overdrive, 🧲 magnet,
 🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) · bosses (3–6 HP, scale with
-score) · phantom (avoid, drains) · Cosmic Shards + secret skins + Konami/logo-tap
+score, green-anaconda look) · phantom (avoid, drains) · running prey (🐀 rats
+that flee, caught for a bonus) · Cosmic Shards + secret skins + Konami/logo-tap
 cheat · 16 skins · endless XP levels · daily challenges · 12-goal Challenges
 ladder (Vanguard/Champion reward skins) · late-game escalation (heat) ·
-ghost/watch mode · 4 arena intensities
+synthesized hiss/SFX (Web Audio, no files) · ghost/watch mode · 4 arena intensities
 (Kids/Chill/Classic/Chaos) · pause · sound (Web Audio, no files) · sharing
 (result card, screenshot) · self-updating · Buy Me a Coffee.
 

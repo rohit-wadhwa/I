@@ -32,6 +32,7 @@ when present, otherwise Playwright's own download.
 | `check-version.js` | The **#1 convention**: `VERSION` in game.js, `version.json`, and both `?v=` queries in index.html must agree — or the self-updater breaks. |
 | Menu / skins / version label | Menu renders, 16 skins, version shown on menu footer + HUD. |
 | Challenges ladder | A run's result marks matching goals done (idempotent); 6 → Vanguard skin, 12 → Champion. |
+| Running prey (rat) | A critter spawns, flees the nearby serpent, and on contact is caught for +400 score / +12 length. |
 | Responsive matrix (`responsive.js`) | Menu rendered at 16 device sizes (320px → 2560px, portrait + landscape) with a full profile; fails on horizontal overflow, a clipped card, a missing CTA, sub-40px touch targets, or any JS error. |
 | Wide-screen menu layout | On ≥860px the stats sit in a 3-column grid and the card widens (the v2.7.0 "proper page", not a tall popup). |
 | Late-game escalation | Boss HP scales 3→6 and length grows with score; milestone toast fires (v2.7.0). |

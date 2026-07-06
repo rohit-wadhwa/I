@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.8.1";
+  const VERSION = "2.9.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -426,6 +426,37 @@
       this.boostGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.08);
     },
 
+    // A one-shot noise burst through a bandpass — the raw material for a hiss.
+    noise(dur, { vol = 0.12, freq = 5000, q = 1.1, slideTo = 0 } = {}) {
+      if (!this.ctx || this.muted) return;
+      const t0 = this.ctx.currentTime;
+      const len = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(freq, t0);
+      if (slideTo) bp.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      bp.Q.value = q;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.22);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(bp); bp.connect(g); g.connect(this.master);
+      src.start(t0); src.stop(t0 + dur + 0.02);
+    },
+    // Snake hiss — descending "tsss".
+    hiss(vol = 0.12) { this.noise(0.55, { vol, freq: 5400, q: 1.2, slideTo: 2500 }); },
+    // Rat squeak + a soft hiss when you catch prey.
+    critter() {
+      this.tone(900, 0.08, { type: "square", vol: 0.12, slide: 420 });
+      this.tone(1320, 0.07, { type: "square", vol: 0.08, delay: 0.06, slide: 260 });
+      this.hiss(0.07);
+    },
+
     eat() {
       const now = performance.now();
       if (now - this.lastEat < 50) return;   // don't machine-gun blips
@@ -449,6 +480,7 @@
     bossSpawn() {
       this.tone(72, 0.9, { type: "sawtooth", vol: 0.25 });
       this.tone(108, 0.9, { type: "sawtooth", vol: 0.18, delay: 0.05 });
+      this.hiss(0.18);   // the anaconda hisses as it arrives
     },
     bossHit() {
       this.thump(120, 0.35, { vol: 0.4 });
@@ -1286,6 +1318,99 @@
     }
   }
 
+  // ---------- Running prey (🐀) ----------
+  // Live prey that scurries and FLEES the nearest serpent — a python catching
+  // a rat. Catchable by anyone; the player gets a real reward. On-theme and a
+  // fun chase, but rare (max 2) so it stays a treat, not a food staple.
+  const critters = [];
+  let critterTimer = rand(8, 16);
+  const CRITTER_R = 15, CRITTER_FLEE = 250, CRITTER_MAX = 2;
+
+  function spawnCritter() {
+    const p = randomWorldPoint(500);
+    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, life: 20, bob: rand(0, 6.28) });
+  }
+  function catchCritter(s, c) {
+    spawnBurst(c.x, c.y, 22);
+    if (s === player) {
+      player.len = Math.min(player.len + 12, 520);
+      player.scorePoints += 400;
+      player.orbsEaten++;
+      audio.critter();
+      showToast("🐀 TASTY PREY!  +400", "#ffca6b");
+    } else {
+      s.len = Math.min(s.len + 8, 520);   // bots get a modest nibble
+    }
+  }
+  function updateCritters(dt) {
+    critterTimer -= dt;
+    if (critterTimer <= 0 && critters.length < CRITTER_MAX) {
+      spawnCritter();
+      critterTimer = rand(14, 26);
+    }
+    for (let i = critters.length - 1; i >= 0; i--) {
+      const c = critters[i];
+      c.life -= dt;
+      // nearest living, non-phantom serpent head
+      let near = null, nd = 1e9;
+      for (const s of snakes) {
+        if (s.dead || s.phantom) continue;
+        const d = dist2(c.x, c.y, s.head.x, s.head.y);
+        if (d < nd) { nd = d; near = s; }
+      }
+      if (near) {
+        const eatR = near.radius + CRITTER_R;
+        if (nd < eatR * eatR) { critters.splice(i, 1); catchCritter(near, c); continue; }
+      }
+      // steer: flee a close serpent, otherwise wander
+      let ax, ay;
+      if (near && nd < CRITTER_FLEE * CRITTER_FLEE) {
+        const d = Math.sqrt(nd) || 1;
+        ax = (c.x - near.head.x) / d; ay = (c.y - near.head.y) / d;
+        c.panic = 1;
+      } else {
+        c.wander -= dt;
+        if (c.wander <= 0) { c.dir += rand(-1, 1); c.wander = rand(0.4, 1.1); }
+        ax = Math.cos(c.dir); ay = Math.sin(c.dir);
+        c.panic = Math.max(0, c.panic - dt);
+      }
+      const spd = c.panic > 0 ? 340 : 115;
+      c.vx += (ax * spd - c.vx) * Math.min(1, dt * 4);
+      c.vy += (ay * spd - c.vy) * Math.min(1, dt * 4);
+      c.x += c.vx * dt; c.y += c.vy * dt;
+      // stay off the electric wall
+      const rad = Math.hypot(c.x, c.y);
+      if (rad > WORLD_R - 120) {
+        c.x -= (c.x / rad) * (rad - (WORLD_R - 120));
+        c.y -= (c.y / rad) * (rad - (WORLD_R - 120));
+        c.dir = Math.atan2(-c.y, -c.x) + rand(-0.6, 0.6);
+      }
+      if (c.life <= 0) critters.splice(i, 1);
+    }
+  }
+  function drawCritters(time) {
+    for (const c of critters) {
+      const p = worldToScreen(c.x, c.y);
+      if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;
+      const size = Math.max(26 * cam.zoom, 15);
+      const face = Math.atan2(c.vy, c.vx);
+      const bob = Math.sin(time * 0.02 + c.bob) * size * 0.08;
+      ctx.save();
+      ctx.translate(p.x, p.y + bob);
+      // warm glow so prey reads as a target worth chasing
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.3);
+      g.addColorStop(0, "rgba(255, 200, 120, 0.32)");
+      g.addColorStop(1, "rgba(255, 200, 120, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, size * 1.3, 0, Math.PI * 2); ctx.fill();
+      if (Math.cos(face) < 0) ctx.scale(-1, 1);   // face travel direction
+      ctx.font = size + "px serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("🐀", 0, 0);
+      ctx.restore();
+    }
+  }
+
   // ---------- Game state ----------
   let snakes = [];
   let player = null;
@@ -1323,6 +1448,8 @@
     for (let i = 0; i < 4; i++) spawnPowerup();
     shards.length = 0;
     shardTimer = spectating ? 30 : 45;
+    critters.length = 0;
+    critterTimer = rand(8, 16);
     buildStars();
 
     if (spectating) {
@@ -1379,6 +1506,7 @@
     audio.ensure();
     audio.resume();
     audio.click();
+    if (!spectating) audio.hiss(0.08);   // your serpent wakes with a soft hiss
   }
 
   function onPlayerDeath(cause) {
@@ -1652,6 +1780,26 @@
       ctx.drawImage(shadow, p.x - segR + r * 0.18, p.y - segR + r * 0.34, segR * 2, segR * 2);
     }
 
+    // Pointed python tail — the last segment tapers to a fine tip (a
+    // triangle beyond the final bead) instead of ending in a blunt ball.
+    if (nSeg > 4) {
+      const L = s.segs[nSeg - 1], P = s.segs[nSeg - 2];
+      const lp = worldToScreen(L.x, L.y);
+      if (lp.x > -60 && lp.x < W + 60 && lp.y > -60 && lp.y < H + 60) {
+        const ta = Math.atan2(L.y - P.y, L.x - P.x);
+        const tipR = Math.max(r * bodyTaper((nSeg - 1) / nSeg), 1.6);
+        const col = segColor(s, nSeg - 1);
+        const perpT = ta + Math.PI / 2;
+        ctx.fillStyle = `hsl(${col[0]}, ${col[1]}%, ${Math.max(col[2] - 8, 6)}%)`;
+        ctx.beginPath();
+        ctx.moveTo(lp.x + Math.cos(perpT) * tipR, lp.y + Math.sin(perpT) * tipR);
+        ctx.lineTo(lp.x + Math.cos(ta) * tipR * 3.6, lp.y + Math.sin(ta) * tipR * 3.6);
+        ctx.lineTo(lp.x - Math.cos(perpT) * tipR, lp.y - Math.sin(perpT) * tipR);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     // Body — glossy sphere sprites, tail-first so the head sits on top.
     for (let i = s.segs.length - 1; i >= 0; i--) {
       const seg = s.segs[i];
@@ -1869,6 +2017,13 @@
       mctx.arc(c + sh.x * scale, c + sh.y * scale, 2.4, 0, Math.PI * 2);
       mctx.fill();
     }
+    // Prey pings too so you can hunt it down.
+    mctx.fillStyle = "#ffca6b";
+    for (const cr of critters) {
+      mctx.beginPath();
+      mctx.arc(c + cr.x * scale, c + cr.y * scale, 2.2, 0, Math.PI * 2);
+      mctx.fill();
+    }
     for (const s of snakes) {
       if (s.dead) continue;
       const x = c + s.head.x * scale, y = c + s.head.y * scale;
@@ -2000,6 +2155,7 @@
       if (foods.length > MAX_FOOD) cullOldestFood(foods.length - MAX_FOOD);
       updatePowerups(dt);
       if (player) updateShards(dt);   // shards only tick during real play
+      updateCritters(dt);
 
       // Kid Mode ('calm') has no bosses or phantom at all.
       const calm = DIFFS[difficulty].calm;
@@ -2070,6 +2226,7 @@
     drawFood(now);
     drawPowerups(now);
     drawShards(now);
+    drawCritters(now);
     for (const s of snakes) if (!s.dead) { sanitizeSnake(s); drawSnake(s, now); }
     drawParticles();
   }
@@ -2716,11 +2873,14 @@
     get phantom() { return phantom; },
     get foods() { return foods; },
     get shards() { return shards; },
+    get critters() { return critters; },
     spawnBoss,
     spawnPhantom,
     applyPowerup,
     spawnDropFood,
     spawnShard,
+    spawnCritter,
+    updateCritters,
     killCueIntensity,
     stats,
     unlocked,

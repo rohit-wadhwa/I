@@ -6,6 +6,11 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.9.0
+- **Running prey (🐀)** — live rats now scurry into the arena and **flee the nearest serpent**. Chase one down and catch it for a tasty **+400 score and +12 length** (a satisfying squeak). Rare (max 2 at a time) so it stays a treat, not a staple; it pings the minimap so you can hunt it. On theme — a python catching a rat. Bots hunt it too.
+- **Pointed python tail** — every serpent's tail now tapers to a fine point instead of ending in a blunt bead.
+- **Snake sounds** — a synthesized **hiss** (filtered Web-Audio noise, still zero sound files): the boss anaconda hisses as it arrives, your serpent wakes with a soft hiss on spawn, and catching prey adds a little squeak.
+
 ## 2.8.1
 - **Snakes look like snakes, not worms** (player feedback) — every serpent now flicks a **forked red tongue** (the clearest "snake" cue), and the head carries direction-tracking eyes. The bead-chain body read as a worm without it.
 - **Boss = green anaconda** — the boss serpent was recoloured from red/orange to a mottled **olive-green anaconda** pattern, with **amber slit-pupil eyes** and bared **fangs**. Much more menacing and clearly a snake.

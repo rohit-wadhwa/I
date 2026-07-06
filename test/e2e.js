@@ -157,6 +157,31 @@ async function startGame(page) {
   check("length capped at 520", decouple.len <= 520, "len=" + decouple.len);
   check("score keeps rising past length cap", decouple.score >= decouple.scoreBefore, JSON.stringify(decouple));
 
+  // ---- Running prey (v2.9.0): spawns, flees, and rewards on catch ----
+  console.log("\nRunning prey (rat)");
+  const prey = JSON.parse(await page.evaluate(() => {
+    __ns.player.len = 100;   // a prior test maxed length at 520; reset so +12 shows
+    __ns.critters.length = 0;
+    __ns.spawnCritter();
+    const spawned = __ns.critters.length;
+    const c = __ns.critters[0], h = __ns.player.head;
+    // Park it INSIDE the flee radius (but outside the mouth) and tick: it flees.
+    c.x = h.x + 150; c.y = h.y; c.vx = 0; c.vy = 0;
+    const d0 = Math.hypot(c.x - h.x, c.y - h.y);
+    for (let i = 0; i < 20; i++) __ns.updateCritters(0.016);
+    const d1 = Math.hypot(__ns.critters[0].x - h.x, __ns.critters[0].y - h.y);
+    // Now drop it on the mouth: it should be caught and reward the player.
+    const scoreB = __ns.player.score, lenB = __ns.player.len;
+    __ns.critters[0].x = h.x; __ns.critters[0].y = h.y;
+    __ns.updateCritters(0.016);
+    return JSON.stringify({ spawned, fledFarther: d1 > d0, remaining: __ns.critters.length,
+      dScore: __ns.player.score - scoreB, dLen: Math.round(__ns.player.len - lenB) });
+  }));
+  check("prey spawns on demand", prey.spawned === 1);
+  check("prey flees the nearby serpent", prey.fledFarther === true);
+  check("prey is caught on contact", prey.remaining === 0);
+  check("catching prey rewards score + length", prey.dScore >= 400 && prey.dLen >= 12, JSON.stringify(prey));
+
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");
   const ch = JSON.parse(await page.evaluate(() => {
