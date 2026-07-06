@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.1.1";
+  const VERSION = "2.2.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -159,13 +159,30 @@
     return { x: Math.cos(a) * r, y: Math.sin(a) * r };
   }
 
-  // Spawn away from other serpents: sample candidates, keep the one whose
-  // nearest snake segment is farthest. Stops respawns from landing inside
-  // another snake (which the spawn-ghost only masks for 3s).
+  // Spawn away from other serpents AND outside their loops. Sampling the
+  // nearest-segment distance alone isn't enough: the centre of a coiled
+  // snake is far from every segment yet fully enclosed, so a spawn there
+  // traps the newcomer. We also reject candidates inside a snake's bounding
+  // circle (its rough enclosure).
   function safeSpawnPoint(self, margin = 500) {
-    let best = randomWorldPoint(margin), bestD = -1;
-    const CLEAR = 260 * 260;   // "far enough" — accept early once clear
-    for (let i = 0; i < 16; i++) {
+    // Precompute a rough bounding circle per sizeable snake (once per call).
+    const bounds = [];
+    for (const s of snakes) {
+      if (!s || s === self || s.dead || !s.segs || s.segs.length < 40) continue;
+      let cx = 0, cy = 0, n = 0;
+      for (let j = 0; j < s.segs.length; j += 4) { cx += s.segs[j].x; cy += s.segs[j].y; n++; }
+      cx /= n; cy /= n;
+      let maxR = 0;
+      for (let j = 0; j < s.segs.length; j += 4) {
+        const d = dist2(s.segs[j].x, s.segs[j].y, cx, cy);
+        if (d > maxR) maxR = d;
+      }
+      bounds.push({ cx, cy, r2: maxR });
+    }
+
+    let best = randomWorldPoint(margin), bestScore = -Infinity;
+    const CLEAR = 260;   // "far enough & open" — accept early
+    for (let i = 0; i < 22; i++) {
       const c = randomWorldPoint(margin);
       let nearest = Infinity;
       for (const s of snakes) {
@@ -175,8 +192,13 @@
           if (d < nearest) nearest = d;
         }
       }
-      if (nearest > bestD) { bestD = nearest; best = c; }
-      if (bestD > CLEAR) break;
+      let score = Math.sqrt(nearest);
+      // Heavy penalty for landing inside a coiled snake's enclosure.
+      for (const bd of bounds) {
+        if (dist2(c.x, c.y, bd.cx, bd.cy) < bd.r2) { score -= 100000; break; }
+      }
+      if (score > bestScore) { bestScore = score; best = c; }
+      if (bestScore > CLEAR) break;
     }
     return best;
   }
@@ -927,6 +949,8 @@
   let bossTimer = 55;
 
   function spawnBoss() {
+    // Defensive: never leave an orphaned boss in the roster.
+    snakes = snakes.filter(s => !s.isBoss);
     boss = new Snake("☠ " + BOSS_NAMES[(Math.random() * BOSS_NAMES.length) | 0], BOSS_SKIN, true);
     boss.isBoss = true;
     boss.hp = 3;
@@ -946,6 +970,8 @@
   let phantomLife = 0;
 
   function spawnPhantom() {
+    // Defensive: never leave an orphaned phantom in the roster.
+    snakes = snakes.filter(s => !s.phantom);
     phantom = new Snake("👻 PHANTOM", PHANTOM_SKIN, true);
     phantom.phantom = true;
     phantom.speedMul = 0.82;
@@ -1322,6 +1348,30 @@
   boostBtn.addEventListener("mouseup", () => { btnBoost = false; });
 
   // ---------- Render helpers ----------
+  // Foolproof safety net: every frame, before drawing, snap any non-finite
+  // or absurdly-detached segment back onto the chain. Runs even while paused
+  // or on a stale tab, so an "exploded" snake can never persist for even one
+  // rendered frame, whatever seeded the corruption.
+  function sanitizeSnake(s) {
+    if (!s.segs || !s.segs.length) return;
+    const h = s.segs[0];
+    if (!isFinite(h.x) || !isFinite(h.y)) {
+      const p = randomWorldPoint(500);
+      h.x = p.x; h.y = p.y;
+    }
+    if (!isFinite(s.dir)) s.dir = s.targetDir = 0;
+    const spacing = s.spacing;
+    const limit = spacing * 6;   // tight leash — never let a gap linger
+    for (let i = 1; i < s.segs.length; i++) {
+      const a = s.segs[i - 1], b = s.segs[i];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (!isFinite(d) || d > limit) {
+        b.x = a.x - Math.cos(s.dir) * spacing;
+        b.y = a.y - Math.sin(s.dir) * spacing;
+      }
+    }
+  }
+
   function worldToScreen(x, y) {
     return {
       x: (x - cam.x) * cam.zoom + W / 2,
@@ -1750,7 +1800,7 @@
     drawFood(now);
     drawPowerups(now);
     drawShards(now);
-    for (const s of snakes) if (!s.dead) drawSnake(s, now);
+    for (const s of snakes) if (!s.dead) { sanitizeSnake(s); drawSnake(s, now); }
     drawParticles();
   }
   requestAnimationFrame(frame);
@@ -1997,6 +2047,7 @@
   function resumeGame() {
     if (!paused) return;
     paused = false;
+    lastT = performance.now();   // first frame after resume gets a tiny dt
     el("pause-overlay").classList.add("hidden");
     if (audio.ctx && !audio.muted) audio.ctx.resume();
   }
