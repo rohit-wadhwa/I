@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.1.0";
+  const VERSION = "2.1.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -112,8 +112,7 @@
     { key: "magnet",    emoji: "🧲", hue: 350, label: "Magnet",    w: 3 },
     { key: "shield",    emoji: "🛡️", hue: 205, label: "Shield",    w: 2 },
     { key: "feast",     emoji: "💠", hue: 275, label: "Feast",     w: 3 },
-    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 },
-    { key: "warp",      emoji: "🌀", hue: 190, label: "Warp Gate", w: 1 }
+    { key: "chameleon", emoji: "🦎", hue: 130, label: "Chameleon", w: 1 }
   ];
   const MAX_POWERUPS = 7;
 
@@ -1030,16 +1029,6 @@
     else if (k === "shield") snake.shieldCharge = true;
     else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
     else if (k === "chameleon") recolorSnake(snake);
-    else if (k === "warp") {
-      // Teleport to a safe spot with a brief ghost — a clean escape.
-      const dest = safeSpawnPoint(snake, 400);
-      spawnBurst(snake.head.x, snake.head.y, 190);
-      const dx = dest.x - snake.head.x, dy = dest.y - snake.head.y;
-      for (const seg of snake.segs) { seg.x += dx; seg.y += dy; }
-      snake.invuln = Math.max(snake.invuln, 1.2);
-      spawnBurst(dest.x, dest.y, 190);
-      if (snake === player) showToast("🌀 WARPED", "#4de3ff");
-    }
     if (snake === player) audio.powerup();
     spawnBurst(pu.x, pu.y, pu.type.hue);
   }

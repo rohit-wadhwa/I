@@ -49,8 +49,8 @@
     <g transform="translate(120,310)">
       <rect x="-100" y="-38" width="200" height="76" rx="12" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.45"/>
       <text x="0" y="-16" text-anchor="middle" font-size="15" font-weight="800" fill="#b06bff">🎁 POWER-UPS</text>
-      <text x="0" y="4" text-anchor="middle" fill="#9aa4c8">⚡ overdrive · 🧲 magnet</text>
-      <text x="0" y="22" text-anchor="middle" fill="#9aa4c8">🛡️ shield · 💠 feast · 🦎 · 🌀</text>
+      <text x="0" y="4" text-anchor="middle" fill="#9aa4c8">⚡ overdrive · 🧲 magnet · 🛡️ shield</text>
+      <text x="0" y="22" text-anchor="middle" fill="#9aa4c8">💠 feast · 🦎 chameleon</text>
     </g>
     <!-- Threats -->
     <g transform="translate(780,310)">

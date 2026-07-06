@@ -59,6 +59,8 @@ Glowing rings spawn around the arena — bots hunt them too:
 | 💠 Feast | instant +20 length |
 | 🦎 Chameleon | **rare** — re-colors your snake with the hue most distinct from every nearby serpent; the answer to unreadable same-color brawls |
 
+Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect them across runs to unlock secret skins.
+
 ## Skins, dailies & bosses (v1.3.0)
 
 - **Glossy 3D rendering** — every body segment, head and orb is a pre-rendered specular sphere sprite with soft drop shadows
