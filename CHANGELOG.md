@@ -6,6 +6,12 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.7.1
+- **Responsive polish (audited across 16 device sizes)** — no horizontal overflow anywhere; touch targets stay 48px on phones / 67px on tablets.
+  - **Landscape phones** (e.g. 844×390): the oversized logo + tagline used to eat the whole height and bury the skins and the *Enter the Arena* button below the fold. On short viewports (`max-height:560px`) the header now compresses so the CTA is reachable with little or no scrolling.
+  - **Wide menu (≥860px)**: the 3-column stat headers no longer wrap — "Level N · Tier · XP" and "Daily challenge · 0 / N" each stay on one line (tighter label, long tier names ellipsize).
+- Added a committed dev test harness (`test/`): a pure-Node version-consistency check plus a headless-Chromium suite (19 checks) covering the menu, escalation, self-heal, food cap and score/length decoupling. The game itself stays zero-dependency.
+
 ## 2.7.0
 - **Late-game escalation** — a player fed back that past ~7K points the arena went stale with no fresh challenge. The threat now scales with your score ("heat"): bosses grow tougher (3 → 6 HP) and longer, bosses **and** the phantom spawn more often (cooldowns shrink up to ~65%), and slain rivals respawn bigger. Milestone warnings fire at 5K / 10K / 20K so you feel the arena turning on you. Kid Mode stays deliberately calm (no escalation).
 - **Big-screen menu is a proper page** — on wide screens (≥860px) the menu is no longer a tall narrow popup floating in black. The card widens (up to 900px) and Level / Arena Intensity / Daily Challenge sit in a 3-column row, with the how-to hints in two centered columns. Touch-target sizing on tablets is untouched.

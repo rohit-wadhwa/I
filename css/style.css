@@ -896,6 +896,15 @@ body.touch #hud-version { bottom: 5px; left: 108px; }
     margin-top: 18px;
   }
   #menu-stats > * { margin-top: 0; }
+  /* In the narrow 3-up columns the stat headers must not wrap awkwardly:
+     tighten the label so "Level N · Tier" + "XP" and "Daily challenge" +
+     "0 / N" each stay on one line (ellipsis an unusually long tier name). */
+  #menu-stats .hud-label { font-size: 11px; letter-spacing: 0.5px; }
+  #menu-stats .daily-head { gap: 8px; }
+  #level-card .daily-head > .hud-label:first-child {
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #daily-card .daily-head > .hud-label { white-space: nowrap; }
   .how-to { max-width: 700px; margin-left: auto; margin-right: auto; }
   .menu-links { max-width: 700px; margin-left: auto; margin-right: auto; }
 }
@@ -906,4 +915,23 @@ body.touch #hud-version { bottom: 5px; left: 108px; }
   #minimap { width: 100px; height: 100px; }
   #score-value { font-size: 22px; }
   .logo { font-size: 32px; }
+}
+
+/* Short viewports — chiefly landscape phones (e.g. 844x390). The oversized
+   logo + tagline + welcome would otherwise eat the whole height and bury the
+   skins and the ENTER THE ARENA button below the fold. Compress the header so
+   the CTA is reachable with little or no scrolling. Placed last so it wins for
+   short screens regardless of width; heights this small never hit a tablet. */
+@media (max-height: 560px) {
+  .menu-card { padding: 16px 26px; border-radius: 16px; }
+  .logo { font-size: 26px; letter-spacing: 2px; animation: none; }
+  .logo span { font-size: 17px; letter-spacing: 6px; }
+  .tagline { display: none; }
+  .welcome { margin: 2px 0 10px; font-size: 12px; min-height: 0; }
+  #nickname { padding: 10px 14px; font-size: 16px; margin: 0; }
+  .skin-picker { margin: 10px 0 4px; }
+  .skin-swatch { width: 42px; height: 42px; }
+  #skin-list { gap: 8px; margin-top: 6px; }
+  #menu-stats { margin-top: 10px; }
+  .primary-btn { padding: 14px; font-size: 17px; }
 }

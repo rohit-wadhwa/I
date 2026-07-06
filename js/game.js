@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.7.0";
+  const VERSION = "2.7.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
