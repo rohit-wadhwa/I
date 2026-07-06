@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.8.0";
+  const VERSION = "2.8.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -71,7 +71,9 @@
   ];
 
   const BOSS_NAMES = ["OMEGA SERPENT", "VOID WYRM", "INFERNO NAGA", "STORM BASILISK"];
-  const BOSS_SKIN = { colors: [[0, 85, 48], [40, 90, 55]] };
+  // Green-anaconda palette: olive base mottled with dark blotches (segColor
+  // cycles the list every 3 segments, giving the banded snake-skin look).
+  const BOSS_SKIN = { colors: [[82, 42, 34], [88, 55, 19], [72, 34, 40], [92, 48, 16]] };
 
   // Arena intensity — user-selected pacing knob. `calm` disables bosses &
   // the phantom; `speed` slows everything for easier control.
@@ -1719,18 +1721,61 @@
         hp.x - r * 1.06, hp.y - r * 1.06, r * 2.12, r * 2.12);
       ctx.restore();
 
-      // Eyes track travel direction.
+      // Eyes track travel direction. Bosses get amber, slit-pupil predator eyes.
       const eyeOff = r * 0.48, eyeR = Math.max(r * 0.3, 2), pupR = Math.max(r * 0.15, 1);
       const perp = s.dir + Math.PI / 2;
       for (const side of [-1, 1]) {
         const ex = hp.x + Math.cos(s.dir) * eyeOff * 0.9 + Math.cos(perp) * eyeOff * side;
         const ey = hp.y + Math.sin(s.dir) * eyeOff * 0.9 + Math.sin(perp) * eyeOff * side;
-        ctx.fillStyle = "#fff";
+        ctx.fillStyle = s.isBoss ? "#ffcf4a" : "#fff";
         ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#0a0d1f";
+        const px = ex + Math.cos(s.dir) * eyeR * 0.35, py = ey + Math.sin(s.dir) * eyeR * 0.35;
+        if (s.isBoss) {
+          ctx.save(); ctx.translate(px, py); ctx.rotate(s.dir);
+          ctx.beginPath(); ctx.ellipse(0, 0, pupR * 1.7, pupR * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.beginPath(); ctx.arc(px, py, pupR, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      // Forked tongue — flicks out periodically. The single clearest "snake"
+      // read; without it the bead body looked like a worm to players.
+      const flickCycle = (time * 0.0015 + s.hue * 0.031) % 1;
+      const flick = flickCycle < 0.22 ? Math.sin(flickCycle / 0.22 * Math.PI) : 0;
+      if (flick > 0.05 && !s.phantom) {
+        const bx = hp.x + Math.cos(s.dir) * r * 0.92, by = hp.y + Math.sin(s.dir) * r * 0.92;
+        const len = r * (0.5 + flick * 1.35);
+        const tx = bx + Math.cos(s.dir) * len, ty = by + Math.sin(s.dir) * len;
+        const fork = len * 0.42, spread = 0.5;
+        ctx.save();
+        ctx.strokeStyle = "#ff2d55";
+        ctx.lineWidth = Math.max(r * 0.13, 1.3);
+        ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.arc(ex + Math.cos(s.dir) * eyeR * 0.4, ey + Math.sin(s.dir) * eyeR * 0.4, pupR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(bx, by); ctx.lineTo(tx, ty);
+        ctx.moveTo(tx, ty); ctx.lineTo(tx + Math.cos(s.dir - spread) * fork, ty + Math.sin(s.dir - spread) * fork);
+        ctx.moveTo(tx, ty); ctx.lineTo(tx + Math.cos(s.dir + spread) * fork, ty + Math.sin(s.dir + spread) * fork);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Boss anaconda bares two fangs.
+      if (s.isBoss) {
+        const mx = hp.x + Math.cos(s.dir) * r * 0.72, my = hp.y + Math.sin(s.dir) * r * 0.72;
+        ctx.save();
+        ctx.fillStyle = "#fff";
+        for (const side of [-1, 1]) {
+          const fx = mx + Math.cos(perp) * r * 0.3 * side, fy = my + Math.sin(perp) * r * 0.3 * side;
+          ctx.beginPath();
+          ctx.moveTo(fx - Math.cos(perp) * r * 0.09 * side, fy - Math.sin(perp) * r * 0.09 * side);
+          ctx.lineTo(fx + Math.cos(s.dir) * r * 0.52, fy + Math.sin(s.dir) * r * 0.52);
+          ctx.lineTo(fx + Math.cos(perp) * r * 0.09 * side, fy + Math.sin(perp) * r * 0.09 * side);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
       }
 
       // Leviathans wear a crown of spikes.

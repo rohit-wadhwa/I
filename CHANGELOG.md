@@ -6,6 +6,10 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.8.1
+- **Snakes look like snakes, not worms** (player feedback) — every serpent now flicks a **forked red tongue** (the clearest "snake" cue), and the head carries direction-tracking eyes. The bead-chain body read as a worm without it.
+- **Boss = green anaconda** — the boss serpent was recoloured from red/orange to a mottled **olive-green anaconda** pattern, with **amber slit-pupil eyes** and bared **fangs**. Much more menacing and clearly a snake.
+
 ## 2.8.0
 - **Challenges ladder** — a curated set of **12 one-run goals** (reach length 150/300, score 3K/10K/25K, 3/8 kills, slay 1/2 bosses, survive 3 min, reach Leviathan, 5K in Chaos). Completion is permanent and gives late-game play a point beyond "survive longer" — the boredom feedback, answered with *structure* instead of just more difficulty. Open it from the new **🎯 Challenges** menu button or the progress chip. Complete 6 to unlock the **Vanguard** skin and all 12 for **Champion** 👑 (wired through the existing skin-unlock system; reuses our stats/localStorage — no server). Inspired by Snake Clash's Tower of Challenges and Little Big Snake's missions.
 

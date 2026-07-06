@@ -99,6 +99,10 @@ async function startGame(page) {
   check("boss HP caps at 6", boss.d.hp === 6, "hp=" + boss.d.hp);
   check("boss grows longer with score", boss.a.len < boss.c.len && boss.c.len <= boss.d.len, JSON.stringify(boss));
 
+  // v2.8.1: the boss wears a green-anaconda palette (olive base hue ~60-140).
+  const bossHue = await page.evaluate(() => __ns.boss.skin.colors[0][0]);
+  check("boss uses a green anaconda palette", bossHue >= 60 && bossHue <= 140, "hue=" + bossHue);
+
   // milestone toast fires when crossing a threshold in a non-Kid arena
   await page.evaluate(() => { __ns.player.scorePoints = 0; });
   await page.waitForTimeout(120);
