@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.0.0";
+  const VERSION = "2.1.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -2252,20 +2252,36 @@
   }
 
   // ---------- Cheat code (the "hack") ----------
+  function activateCheat() {
+    let n = 0;
+    for (const d of SKIN_DEFS) if (d.unlock && !unlocked[d.key]) { unlocked[d.key] = true; n++; }
+    savePrefs(prefs);
+    buildSkinPicker();
+    audio.ensure();
+    showToast(n ? "⧉ CHEAT ACTIVATED — ALL " + n + " SKINS UNLOCKED" : "⧉ ALREADY FULLY UNLOCKED", "#7dff9a");
+    audio.unlock();
+  }
+
+  // Desktop: the classic Konami code.
   const KONAMI = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","KeyB","KeyA"];
   let konamiIdx = 0;
   window.addEventListener("keydown", (e) => {
     konamiIdx = (e.code === KONAMI[konamiIdx]) ? konamiIdx + 1 : (e.code === KONAMI[0] ? 1 : 0);
-    if (konamiIdx === KONAMI.length) {
-      konamiIdx = 0;
-      let n = 0;
-      for (const d of SKIN_DEFS) if (d.unlock && !unlocked[d.key]) { unlocked[d.key] = true; n++; }
-      savePrefs(prefs);
-      buildSkinPicker();
-      showToast("⧉ CHEAT ACTIVATED — ALL " + n + " SKINS UNLOCKED", "#7dff9a");
-      audio.unlock();
-    }
+    if (konamiIdx === KONAMI.length) { konamiIdx = 0; activateCheat(); }
   });
+
+  // Mobile: secret gesture — tap the logo 7 times quickly.
+  let logoTaps = 0, logoTapT = 0;
+  const logoEl = document.querySelector(".logo");
+  if (logoEl) {
+    const onLogoTap = () => {
+      const now = performance.now();
+      logoTaps = (now - logoTapT < 900) ? logoTaps + 1 : 1;
+      logoTapT = now;
+      if (logoTaps >= 7) { logoTaps = 0; activateCheat(); }
+    };
+    logoEl.addEventListener("click", onLogoTap);
+  }
 
   function showBest() {
     el("best-score").textContent = prefs.best ? `Personal best: ${prefs.best.toLocaleString()}` : "";

@@ -446,17 +446,33 @@ body.touch #boost-hint { display: none; }
   font-weight: 900;
   letter-spacing: 4px;
   color: var(--text);
-  text-shadow: 0 0 18px rgba(77, 227, 255, 0.55);
+  cursor: pointer;
+  animation: logo-pulse 3.4s ease-in-out infinite;
+}
+
+@keyframes logo-pulse {
+  0%, 100% { text-shadow: 0 0 16px rgba(77, 227, 255, 0.45); }
+  50% { text-shadow: 0 0 26px rgba(77, 227, 255, 0.85), 0 0 44px rgba(176, 107, 255, 0.35); }
 }
 
 .logo span {
   display: block;
   font-size: 26px;
   letter-spacing: 10px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  background-size: 220% auto;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: logo-flow 5s linear infinite;
+}
+
+@keyframes logo-flow {
+  to { background-position: 220% center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo, .logo span { animation: none; }
 }
 
 .tagline { margin: 10px 0 22px; font-size: 14px; color: var(--muted); }

@@ -4,6 +4,14 @@
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
+![Gameplay map](docs/gameplay-map.svg)
+
+## How it's built
+
+One `requestAnimationFrame` loop drives everything; all state lives in `js/game.js`, the HUD/overlays are plain DOM, and progress persists to `localStorage`.
+
+![Architecture](docs/architecture.svg)
+
 ## Play
 
 **▶ Live: [neon-serpent-arena-game.vercel.app](https://neon-serpent-arena-game.vercel.app/)**

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#080b1c"/><stop offset="100%" stop-color="#05060f"/>
+    </linearGradient>
+    <filter id="g2"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="900" height="640" fill="url(#bg2)"/>
+  <text x="450" y="44" text-anchor="middle" font-size="24" font-weight="900" fill="#e8ecff" filter="url(#g2)">Architecture · one requestAnimationFrame loop</text>
+  <text x="450" y="66" text-anchor="middle" font-size="12" fill="#8a93b8">index.html (DOM overlays) · css/style.css (neon theme) · js/game.js (engine)</text>
+
+  <!-- Loop cycle -->
+  <g font-size="12" fill="#cdd6f4">
+    <g transform="translate(80,110)">
+      <rect width="180" height="66" rx="10" fill="#0d1330" stroke="#4de3ff" stroke-opacity="0.5"/>
+      <text x="90" y="27" text-anchor="middle" font-size="14" font-weight="800" fill="#4de3ff">1 · INPUT</text>
+      <text x="90" y="48" text-anchor="middle" fill="#9aa4c8">pointer / touch / keys</text>
+    </g>
+    <g transform="translate(360,110)">
+      <rect width="180" height="66" rx="10" fill="#0d1330" stroke="#4de3ff" stroke-opacity="0.5"/>
+      <text x="90" y="27" text-anchor="middle" font-size="14" font-weight="800" fill="#4de3ff">2 · UPDATE</text>
+      <text x="90" y="48" text-anchor="middle" fill="#9aa4c8">snakes · AI · effects</text>
+    </g>
+    <g transform="translate(640,110)">
+      <rect width="180" height="66" rx="10" fill="#0d1330" stroke="#4de3ff" stroke-opacity="0.5"/>
+      <text x="90" y="27" text-anchor="middle" font-size="14" font-weight="800" fill="#4de3ff">3 · COLLISIONS</text>
+      <text x="90" y="48" text-anchor="middle" fill="#9aa4c8">heads vs bodies</text>
+    </g>
+    <g transform="translate(360,210)">
+      <rect width="180" height="66" rx="10" fill="#0d1330" stroke="#4de3ff" stroke-opacity="0.5"/>
+      <text x="90" y="27" text-anchor="middle" font-size="14" font-weight="800" fill="#4de3ff">4 · CAMERA</text>
+      <text x="90" y="48" text-anchor="middle" fill="#9aa4c8">follow · zoom by size</text>
+    </g>
+    <g transform="translate(640,210)">
+      <rect width="180" height="66" rx="10" fill="#0d1330" stroke="#4de3ff" stroke-opacity="0.5"/>
+      <text x="90" y="27" text-anchor="middle" font-size="14" font-weight="800" fill="#4de3ff">5 · RENDER</text>
+      <text x="90" y="48" text-anchor="middle" fill="#9aa4c8">canvas sphere sprites</text>
+    </g>
+  </g>
+  <g stroke="#4de3ff" stroke-opacity="0.5" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#4de3ff"/></marker></defs>
+    <path d="M260 143 L358 143"/>
+    <path d="M540 143 L638 143"/>
+    <path d="M730 178 L560 210"/>
+    <path d="M540 243 L638 243"/>
+  </g>
+
+  <!-- Systems -->
+  <text x="60" y="320" font-size="14" font-weight="800" fill="#b06bff">SYSTEMS (all update inside the loop)</text>
+  <g font-size="11.5" fill="#9aa4c8">
+    <g transform="translate(60,338)"><rect width="250" height="52" rx="9" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Snake</text><text x="14" y="40">segment chain · evolution · boost · AI brain</text></g>
+    <g transform="translate(325,338)"><rect width="250" height="52" rx="9" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Food (spatial hash)</text><text x="14" y="40">ambient orbs · drops · magnet pull</text></g>
+    <g transform="translate(590,338)"><rect width="250" height="52" rx="9" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Power-ups &amp; Shards</text><text x="14" y="40">weighted spawns · pickups</text></g>
+    <g transform="translate(60,400)"><rect width="250" height="52" rx="9" fill="#1a0a12" stroke="#ff4d6d" stroke-opacity="0.4"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Boss &amp; Phantom</text><text x="14" y="40">timed events · one threat at a time</text></g>
+    <g transform="translate(325,400)"><rect width="250" height="52" rx="9" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Audio (Web Audio)</text><text x="14" y="40">synthesized SFX · no files</text></g>
+    <g transform="translate(590,400)"><rect width="250" height="52" rx="9" fill="#0d1330" stroke="#b06bff" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Particles</text><text x="14" y="40">death bursts · glints</text></g>
+  </g>
+
+  <!-- Persistence -->
+  <text x="60" y="500" font-size="14" font-weight="800" fill="#ffd75e">PERSISTENCE · localStorage</text>
+  <g font-size="11.5" fill="#9aa4c8">
+    <g transform="translate(60,518)"><rect width="385" height="52" rx="9" fill="#0d1330" stroke="#ffd75e" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Lifetime stats &amp; unlocks</text><text x="14" y="40">XP/levels · skins · shards · daily challenge · best score</text></g>
+    <g transform="translate(455,518)"><rect width="385" height="52" rx="9" fill="#0d1330" stroke="#ffd75e" stroke-opacity="0.35"/><text x="14" y="22" font-size="13" font-weight="700" fill="#cdd6f4">Self-updating</text><text x="14" y="40">polls version.json · deferred update pill · cache-busted assets</text></g>
+  </g>
+
+  <text x="450" y="612" text-anchor="middle" font-size="11" fill="#5a6488">Zero dependencies · zero network calls in-game · self-healing physics · ~2500 lines</text>
+</svg>
