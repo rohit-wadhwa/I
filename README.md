@@ -91,8 +91,8 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 
 - Circular neon arena with an electrified boundary ring
 - 5-tier evolution system with visual forms and an "EVOLVED" banner
-- Power-up rings (overdrive, magnet, shield, feast) contested by the AI
-- 13 AI serpents with food-seeking, wall-avoidance and body-dodging behavior
+- Power-up rings (overdrive, magnet, shield, feast, chameleon, soul-swap) contested by the AI
+- 6–18 AI serpents (by arena intensity) with food-seeking, wall-avoidance and body-dodging behavior
 - Boost mechanic that drains mass and drops orbs
 - Head-to-head duels — the bigger serpent wins
 - Dead serpents burst into a feast of glowing orbs
