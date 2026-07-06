@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=2.3.0" />
+  <link rel="stylesheet" href="css/style.css?v=2.4.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -58,6 +58,7 @@
     <div class="menu-card">
       <h1 class="logo">NEON<span>SERPENT</span></h1>
       <p class="tagline">Eat orbs. Dodge rivals. Rule the arena.</p>
+      <p id="welcome" class="welcome"></p>
 
       <input id="nickname" type="text" maxlength="14" placeholder="Your serpent's name" autocomplete="off" />
 
@@ -75,13 +76,15 @@
         <div class="daily-track"><div id="level-fill"></div></div>
       </div>
 
-      <div id="difficulty-row">
+      <div id="difficulty-block">
         <div class="hud-label">Arena intensity</div>
         <div id="difficulty-seg">
-          <button data-d="0">Chill</button>
-          <button data-d="1" class="on">Classic</button>
-          <button data-d="2">Chaos</button>
+          <button data-d="0">Kids</button>
+          <button data-d="1">Chill</button>
+          <button data-d="2" class="on">Classic</button>
+          <button data-d="3">Chaos</button>
         </div>
+        <div id="difficulty-desc"></div>
       </div>
 
       <div id="daily-card">
@@ -205,6 +208,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=2.3.0"></script>
+  <script src="js/game.js?v=2.4.0"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.3.0";
+  const VERSION = "2.4.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -68,12 +68,19 @@
   const BOSS_NAMES = ["OMEGA SERPENT", "VOID WYRM", "INFERNO NAGA", "STORM BASILISK"];
   const BOSS_SKIN = { colors: [[0, 85, 48], [40, 90, 55]] };
 
-  // Arena intensity — user-selected pacing knob.
+  // Arena intensity — user-selected pacing knob. `calm` disables bosses &
+  // the phantom; `speed` slows everything for easier control.
   const DIFFS = [
-    { name: "Chill",   bots: 8,  bossCd: 1.5,  botLen: 45 },
-    { name: "Classic", bots: 13, bossCd: 1.0,  botLen: 70 },
-    { name: "Chaos",   bots: 18, bossCd: 0.65, botLen: 95 }
+    { name: "Kids",    bots: 6,  bossCd: 0,    botLen: 26, speed: 0.78, calm: true,
+      desc: "Gentle · few small rivals · no bosses · slower" },
+    { name: "Chill",   bots: 8,  bossCd: 1.5,  botLen: 45,
+      desc: "Relaxed · fewer, smaller rivals · rare bosses" },
+    { name: "Classic", bots: 13, bossCd: 1.0,  botLen: 70,
+      desc: "The standard arena" },
+    { name: "Chaos",   bots: 18, bossCd: 0.65, botLen: 95,
+      desc: "Frantic · more, bigger rivals · frequent bosses" }
   ];
+  let arenaSpeedMul = 1;
 
   // Endless level curve: level N starts at 400·(N-1)² lifetime XP.
   const LEVEL_TITLES = [
@@ -625,7 +632,7 @@
         }
       }
 
-      speed *= this.speedMul;
+      speed *= this.speedMul * arenaSpeedMul;
 
       // Move head, then let every segment chase the one in front of it.
       const h = this.head;
@@ -1156,7 +1163,7 @@
   let running = false;
   let spectating = false;
   let paused = false;
-  let difficulty = clamp(prefs.difficulty ?? 1, 0, 2);
+  let difficulty = clamp(prefs.difficulty ?? 2, 0, DIFFS.length - 1);   // default Classic
   let fxLite = !!prefs.fxLite;
   let frameDt = 0.016;
   let cam = { x: 0, y: 0, zoom: 1 };
@@ -1200,6 +1207,7 @@
     }
 
     const diff = DIFFS[difficulty];
+    arenaSpeedMul = diff.speed || 1;
     const usedNames = new Set();
     snakes = player ? [player] : [];
     for (let i = 0; i < diff.bots; i++) {
@@ -1798,9 +1806,12 @@
       updatePowerups(dt);
       if (player) updateShards(dt);   // shards only tick during real play
 
+      // Kid Mode ('calm') has no bosses or phantom at all.
+      const calm = DIFFS[difficulty].calm;
+
       // Boss events: one giant hunter at a time, on a cooldown.
       // Boss and phantom never overlap — one threat at a time.
-      if ((!boss || boss.dead) && (!phantom || phantom.dead)) {
+      if (!calm && (!boss || boss.dead) && (!phantom || phantom.dead)) {
         bossTimer -= dt;
         if (bossTimer <= 0) spawnBoss();
       }
@@ -1815,7 +1826,7 @@
         } else {
           drainNearPhantom(dt);
         }
-      } else if (!boss || boss.dead) {
+      } else if (!calm && (!boss || boss.dead)) {
         phantomTimer -= dt;
         if (phantomTimer <= 0) spawnPhantom();
       }
@@ -2135,6 +2146,7 @@
     showBest();
     renderDaily();
     renderLevel();
+    renderWelcome();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
   }
@@ -2214,7 +2226,7 @@
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
     el("nickname").value = "";
     selectedSkin = 0;
-    difficulty = 1;
+    difficulty = 2;   // Classic
     fxLite = false;
     el("fx-btn").textContent = "FX: Full";
     renderDiffSeg();
@@ -2222,6 +2234,7 @@
     showBest();
     renderDaily();
     renderLevel();
+    renderWelcome();
     renderShardChip();
     flashBtn(e.currentTarget, "Progress cleared");
   });
@@ -2381,6 +2394,17 @@
     el("best-score").textContent = prefs.best ? `Personal best: ${prefs.best.toLocaleString()}` : "";
   }
 
+  function renderWelcome() {
+    const w = el("welcome");
+    if (!w) return;
+    const lvl = levelInfo().lvl;
+    if (prefs.name) {
+      w.textContent = `Welcome back, ${prefs.name}! 🐍  Level ${lvl}`;
+    } else {
+      w.textContent = "Welcome! 🐍  Name your serpent, pick a glow, and dive in.";
+    }
+  }
+
   // ---------- Endless levels ----------
   function levelInfo() {
     const xp = stats.totalScore;
@@ -2403,10 +2427,11 @@
     document.querySelectorAll("#difficulty-seg button").forEach(b => {
       b.classList.toggle("on", +b.dataset.d === difficulty);
     });
+    el("difficulty-desc").textContent = DIFFS[difficulty].desc;
   }
   document.querySelectorAll("#difficulty-seg button").forEach(b => {
     b.addEventListener("click", () => {
-      difficulty = clamp(+b.dataset.d, 0, 2);
+      difficulty = clamp(+b.dataset.d, 0, DIFFS.length - 1);
       prefs.difficulty = difficulty;
       savePrefs(prefs);
       renderDiffSeg();
@@ -2428,6 +2453,7 @@
     showBest();
     renderDaily();
     renderLevel();
+    renderWelcome();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
   });
@@ -2439,6 +2465,7 @@
   showBest();
   renderDaily();
   renderLevel();
+  renderWelcome();
   renderDiffSeg();
   renderShardChip();
   el("fx-btn").textContent = "FX: " + (fxLite ? "Lite" : "Full");

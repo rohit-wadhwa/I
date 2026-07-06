@@ -106,6 +106,23 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 - **About screen** — credits the snake.io / slither.io inspiration and lists exactly what's different
 - Version tag, mid-run restart button (⟳), and a "Reset progress" option
 
+## Arena intensity (v2.4.0)
+
+Pick your pace on the menu — the difference is immediate:
+
+| Mode | Rivals | Threats | Speed |
+|------|--------|---------|-------|
+| **Kids** | 6 small | none (no bosses/phantom) | slower, easier to control |
+| **Chill** | 8 smaller | rare bosses | normal |
+| **Classic** | 13 | standard | normal |
+| **Chaos** | 18 bigger | frequent bosses | normal |
+
+**Kid Mode** removes every scary/hard element (no bosses, no phantom) and slows the game down so young players can enjoy it. The UI also scales up on tablets for big, easy touch targets.
+
+## Roadmap
+
+- **Real multiplayer** — two friends in the same live arena. This needs a game server (authoritative state + WebSocket sync), so it's a separate backend project rather than a change to this static client. Logged as a future TODO.
+
 ## Deploy to Vercel
 
 This is a fully static site — Vercel needs zero configuration.
