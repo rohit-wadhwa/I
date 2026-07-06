@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.2.0";
+  const VERSION = "2.2.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -141,12 +141,6 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const dist2 = (ax, ay, bx, by) => { const dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; };
-  const lerpAngle = (a, b, t) => {
-    let d = b - a;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    return a + d * t;
-  };
   function angleTo(a, b) {
     let d = b - a;
     while (d > Math.PI) d -= Math.PI * 2;
@@ -174,10 +168,12 @@
       cx /= n; cy /= n;
       let maxR = 0;
       for (let j = 0; j < s.segs.length; j += 4) {
-        const d = dist2(s.segs[j].x, s.segs[j].y, cx, cy);
+        const d = Math.hypot(s.segs[j].x - cx, s.segs[j].y - cy);
         if (d > maxR) maxR = d;
       }
-      bounds.push({ cx, cy, r2: maxR });
+      // Add a clearance margin so we also reject the ring just outside a loop.
+      const rr = maxR + 220;
+      bounds.push({ cx, cy, r2: rr * rr });
     }
 
     let best = randomWorldPoint(margin), bestScore = -Infinity;
@@ -477,6 +473,7 @@
     if (bucket) {
       const i = bucket.indexOf(f);
       if (i >= 0) bucket.splice(i, 1);
+      if (bucket.length === 0) foodGrid.delete(f._key);   // don't retain empties
     }
     const i = foods.indexOf(f);
     if (i >= 0) foods.splice(i, 1);
@@ -490,6 +487,7 @@
     if (old) {
       const i = old.indexOf(f);
       if (i >= 0) old.splice(i, 1);
+      if (old.length === 0) foodGrid.delete(f._key);
     }
     let b = foodGrid.get(k);
     if (!b) { b = []; foodGrid.set(k, b); }
@@ -497,13 +495,15 @@
     f._key = k;
   }
   function foodsNear(x, y, radius) {
+    // Push in a loop (not spread) — avoids the arg-count limit on huge
+    // buckets and is faster; a fresh array keeps callers independent.
     const out = [];
     const c0x = ((x - radius) / CELL) | 0, c1x = ((x + radius) / CELL) | 0;
     const c0y = ((y - radius) / CELL) | 0, c1y = ((y + radius) / CELL) | 0;
     for (let cx = c0x; cx <= c1x; cx++) {
       for (let cy = c0y; cy <= c1y; cy++) {
         const bucket = foodGrid.get(cx * 100000 + cy + 5000000000);
-        if (bucket) out.push(...bucket);
+        if (bucket) for (let i = 0; i < bucket.length; i++) out.push(bucket[i]);
       }
     }
     return out;
@@ -1166,7 +1166,7 @@
   let scoreHistory = [];      // [seconds, score] samples for the run chart
   let runStart = 0;
   let deathSnap = null;       // frozen frame captured at the moment of death
-  let leader = null;          // current #1 by length — wears the crown
+  let leader = null;          // current #1 by score — wears the crown
 
   function buildStars() {
     stars = [];
@@ -1297,7 +1297,10 @@
         // Skip the few segments right behind the other head only for
         // head-on cases — body checks start from segment 2.
         const rr = (s.radius + o.radius * 0.9) ** 2;
-        for (let i = 2; i < o.segs.length; i++) {
+        // Stride by 2: consecutive segments overlap (gap = spacing, which is
+        // always < the collision radius at every size), so sampling every
+        // other one can't miss a hit while halving the work.
+        for (let i = 2; i < o.segs.length; i += 2) {
           const seg = o.segs[i];
           if (dist2(h.x, h.y, seg.x, seg.y) < rr) {
             s.die(o.name, o);
@@ -1695,7 +1698,14 @@
     if (lbTimer > 0) return;
     lbTimer = 0.5;
     renderEffects();
-    if (player) scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
+    if (player) {
+      scoreHistory.push([(performance.now() - runStart) / 1000, player.score]);
+      // Cap unbounded growth on marathon runs: halve resolution of the older
+      // samples, keeping the full time span for the run chart.
+      if (scoreHistory.length > 720) {
+        scoreHistory = scoreHistory.filter((_, i) => i % 2 === 0 || i >= scoreHistory.length - 60);
+      }
+    }
 
     // Long runs: drop dead bosses/phantoms from the roster (bots respawn,
     // these don't — they'd pile up forever otherwise).
