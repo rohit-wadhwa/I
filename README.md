@@ -69,6 +69,8 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 - **Boss events** — every couple of minutes a 3-HP boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body three times to defeat it for a mass bonus and the Ember Lord skin
 - **Crown on the leader** — the current #1 serpent wears a golden crown in the arena
 - Kill-counter chip in the HUD; "Skin unlocked" toasts
+- **Kill-opportunity cue** (v2.3.0) — a rival head about to crash into your body gets a pulsing red ring, so you can spot the moment to cut it off (only head-to-body kills; bodies crossing is harmless)
+- **Update on return** (v2.3.0) — a tab left backgrounded for hours offers the update right on the pause screen it returns to
 - **Synthesized sound effects** (v1.4.0) — eat blips, boost whoosh, kills, death, evolution fanfare, boss horn/impacts/victory, unlock chimes — all generated with the Web Audio API, zero audio files; mute toggle in the HUD (🔊), menu, or press **M** (persisted)
 - **Self-updating** (v1.3.1) — the game polls `version.json` and shows an "Update available — tap to refresh" pill when a new deploy lands; the menu version tag doubles as a manual update check
 - **👁 Ghost mode** (v1.5.0) — spectate the arena without playing: the camera follows the current leader while bots, bosses and phantoms battle on

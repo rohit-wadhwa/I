@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.2.1";
+  const VERSION = "2.3.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -1463,6 +1463,24 @@
   // point at the tail so the tail end is always identifiable.
   function bodyTaper(t) { return 1 - Math.pow(t, 1.5) * 0.82; }
 
+  // Kill-opportunity cue: how close a rival's HEAD is to crashing into YOUR
+  // body (0 = safe, 1 = about to die on you). Drives a red warning ring so
+  // you can spot the moment to cut a rival off.
+  function killCueIntensity(s) {
+    if (!player || player.dead || s === player || s.dead || s.phantom || s.invuln > 0) return 0;
+    const h = s.head;
+    const killD = s.radius + player.radius * 0.9;
+    const warnD = killD * 2.4;
+    let nearest = Infinity;
+    for (let i = 2; i < player.segs.length; i += 4) {
+      const d = dist2(h.x, h.y, player.segs[i].x, player.segs[i].y);
+      if (d < nearest) nearest = d;
+    }
+    nearest = Math.sqrt(nearest);
+    if (nearest > warnD) return 0;
+    return clamp((warnD - nearest) / (warnD - killD), 0, 1);
+  }
+
   function drawSnake(s, time) {
     const r = s.radius * cam.zoom;
     const light = s.light, sat = s.sat;
@@ -1517,6 +1535,22 @@
     // Head glow.
     const hp = worldToScreen(s.head.x, s.head.y);
     if (hp.x > -80 && hp.x < W + 80 && hp.y > -80 && hp.y < H + 80) {
+      // Kill-opportunity cue: a rival about to crash into your body gets a
+      // pulsing red ring — your signal to hold position or cut it off.
+      const cue = killCueIntensity(s);
+      if (cue > 0) {
+        const pulse = 0.55 + 0.45 * Math.sin(time * 0.02);
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 60, 90, ${cue * pulse})`;
+        ctx.lineWidth = 2.5 + cue * 1.5;
+        ctx.shadowColor = "rgba(255, 60, 90, 0.9)";
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, r * (1.55 + 0.35 * cue), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Python+ radiate an aura.
       if (tier >= 2 && !fxLite) {
         const g = ctx.createRadialGradient(hp.x, hp.y, r, hp.x, hp.y, r * 3);
@@ -2053,6 +2087,7 @@
     if (audio.ctx) audio.ctx.suspend();
     el("pause-tip").textContent = PAUSE_TIPS[(Math.random() * PAUSE_TIPS.length) | 0];
     el("pause-overlay").classList.remove("hidden");
+    refreshPauseUpdateBtn();
   }
   function resumeGame() {
     if (!paused) return;
@@ -2061,6 +2096,14 @@
     el("pause-overlay").classList.add("hidden");
     if (audio.ctx && !audio.muted) audio.ctx.resume();
   }
+  // If an update arrived (e.g. this tab sat backgrounded for hours), offer it
+  // right on the pause screen the tab returns to.
+  function refreshPauseUpdateBtn() {
+    const btn = el("pause-update-btn");
+    if (paused && pendingUpdate) btn.classList.remove("hidden");
+    else btn.classList.add("hidden");
+  }
+  el("pause-update-btn").addEventListener("click", () => { if (pendingUpdate) applyUpdate(pendingUpdate); });
   el("pause-btn").addEventListener("click", pauseGame);
   el("resume-btn").addEventListener("click", resumeGame);
   el("pause-quit-btn").addEventListener("click", () => {
@@ -2226,6 +2269,7 @@
         if (manual) return applyUpdate(data.version);
         pendingUpdate = data.version;
         maybeShowUpdatePill();
+        refreshPauseUpdateBtn();   // reveal on the pause screen too
       } else if (manual) {
         flashBtn(btn, "Up to date ✓");
       }
@@ -2423,6 +2467,7 @@
     applyPowerup,
     spawnDropFood,
     spawnShard,
+    killCueIntensity,
     stats,
     unlocked
   };
