@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.4.0";
+  const VERSION = "2.5.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world
   const BOT_COUNT = 13;
@@ -1253,7 +1253,8 @@
     running = false;
     audio.setBoost(false);
     const score = player.score;
-    if (score > (prefs.best || 0)) prefs.best = score;
+    const isNewBest = score > (prefs.best || 0) && score > 0;
+    if (isNewBest) prefs.best = score;
 
     // Lifetime stats drive skin unlocks, levels and the daily challenge.
     const lvlBefore = levelInfo().lvl;
@@ -1284,6 +1285,7 @@
     el("final-length").textContent = Math.floor(player.len);
     el("final-kills").textContent = player.kills;
     el("final-rank").textContent = bestRank === 99 ? "-" : "#" + bestRank;
+    el("new-best-badge").classList.toggle("hidden", !isNewBest);
 
     setTimeout(() => {
       hud.classList.add("hidden");
@@ -2066,7 +2068,7 @@
     c.textAlign = "left";
     c.shadowColor = "rgba(0,0,0,0.8)";
     c.shadowBlur = 6;
-    c.fillText("🐍 NEON SERPENT ARENA · " + (player ? player.score.toLocaleString() + " pts" : ""), 16, H - 14);
+    c.fillText("🐍 NEON SERPENT ARENA · " + (player ? player.score.toLocaleString() + " pts" : "") + "  ·  v" + VERSION, 16, H - 14);
     const text = `Slithering through Neon Serpent Arena 🐍⚡ Join me: ${SHARE_URL()}`;
     shareCanvas(shot, "neon-serpent-arena.png", text, e.currentTarget);
   });
@@ -2246,6 +2248,9 @@
   el("about-close").addEventListener("click", () => el("about").classList.add("hidden"));
 
   el("version-tag").textContent = "v" + VERSION + " ↻";
+  el("hud-version").textContent = "v" + VERSION;
+  // Coffee links open natively (target=_blank); just a friendly click sound.
+  document.querySelectorAll(".coffee-btn").forEach(a => a.addEventListener("click", () => { audio.ensure(); audio.click(); }));
   el("about-version").textContent = "Version " + VERSION + " · built with vanilla HTML, CSS and JavaScript · deploys anywhere static files go.";
 
   // ---------- Update checker ----------

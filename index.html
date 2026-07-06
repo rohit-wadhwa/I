@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=2.4.0" />
+  <link rel="stylesheet" href="css/style.css?v=2.5.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -43,10 +43,11 @@
     <button id="boost-btn" aria-label="Boost">⚡</button>
     <div id="hud-tools">
       <button id="pause-btn" title="Pause (P / Esc)">⏸</button>
-      <button id="shot-btn" title="Save a screenshot">📸</button>
+      <button id="shot-btn" title="Screenshot to share">📸</button>
       <button id="restart-btn" title="Restart run / exit ghost mode">⟳</button>
       <button id="mute-btn" title="Toggle sound (M)">🔊</button>
     </div>
+    <div id="hud-version"></div>
     <div id="spectate-bar">
       <button id="spectate-play">▶ JUMP IN</button>
       <button id="spectate-exit">✕ MENU</button>
@@ -121,6 +122,8 @@
       <div id="best-score" class="best"></div>
       <div id="shard-count" class="shard-chip hidden"></div>
 
+      <a id="coffee-btn" class="coffee-btn" href="https://buymeacoffee.com/rohit.wadhwa" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>
+
       <div class="menu-footer">
         <button id="version-tag" class="link-btn version" title="Check for a newer version"></button>
         <button id="fx-btn" class="link-btn version" title="Toggle visual effects (Lite = faster on old phones)">FX: Full</button>
@@ -172,6 +175,7 @@
         <li><b>100% static &amp; offline</b> — no servers, no ads, no tracking, no downloads. One tiny page.</li>
       </ul>
       <p class="about-text small" id="about-version"></p>
+      <a class="coffee-btn" href="https://buymeacoffee.com/rohit.wadhwa" target="_blank" rel="noopener noreferrer">☕ Made with love — buy me a coffee</a>
       <button id="about-close" class="primary-btn">CLOSE</button>
     </div>
   </div>
@@ -180,6 +184,7 @@
   <div id="death-screen" class="overlay hidden">
     <div class="menu-card">
       <h2 class="death-title">SHORT-CIRCUITED</h2>
+      <div id="new-best-badge" class="hidden">★ NEW PERSONAL BEST — flex on your friends!</div>
       <p id="death-cause" class="tagline"></p>
       <div class="stats-grid">
         <div class="stat"><div class="hud-label">Final score</div><div id="final-score" class="stat-num">0</div></div>
@@ -190,8 +195,9 @@
       <canvas id="run-chart" width="340" height="110"></canvas>
       <button id="respawn-btn" class="primary-btn">RESPAWN</button>
       <button id="watch-btn" class="ghost-btn accent">👁 WATCH ARENA</button>
-      <button id="share-btn" class="ghost-btn">📤 SHARE RESULT</button>
+      <button id="share-btn" class="ghost-btn accent">📤 SHARE RESULT</button>
       <button id="menu-btn" class="ghost-btn">BACK TO MENU</button>
+      <a class="coffee-btn small" href="https://buymeacoffee.com/rohit.wadhwa" target="_blank" rel="noopener noreferrer">☕ Enjoying it? Buy me a coffee</a>
     </div>
   </div>
 
@@ -208,6 +214,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=2.4.0"></script>
+  <script src="js/game.js?v=2.5.0"></script>
 </body>
 </html>

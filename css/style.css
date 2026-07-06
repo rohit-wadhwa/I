@@ -731,6 +731,66 @@ body.touch #boost-hint { display: none; }
   text-shadow: 0 0 10px rgba(160, 110, 255, 0.5);
 }
 
+/* Buy Me a Coffee — BMC brand yellow, tasteful */
+.coffee-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-align: center;
+  text-decoration: none;
+  color: #12100a;
+  background: #ffdd00;
+  border-radius: 12px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.coffee-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 221, 0, 0.35);
+}
+
+.coffee-btn.small {
+  margin-top: 12px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  background: transparent;
+  color: #ffdd00;
+  border: 1px solid rgba(255, 221, 0, 0.5);
+}
+
+#new-best-badge {
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #12100a;
+  background: linear-gradient(90deg, #ffd75e, #ffb84d);
+  border-radius: 999px;
+  box-shadow: 0 0 20px rgba(255, 215, 94, 0.5);
+  animation: nb-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes nb-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+#hud-version {
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(138, 147, 184, 0.45);
+  pointer-events: none;
+}
+
+body.touch #hud-version { bottom: 5px; left: 108px; }
+
+@media (prefers-reduced-motion: reduce) { #new-best-badge { animation: none; } }
+
 /* ---------- Death screen ---------- */
 .death-title {
   font-size: 30px;
