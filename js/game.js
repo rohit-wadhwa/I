@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.6.1";
+  const VERSION = "2.7.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -927,7 +927,7 @@
       } else if (this.isBoss) {
         showToast("BOSS DEFEATED!", "#4de3ff");
         audio.bossDown();
-        bossTimer = rand(80, 130) * DIFFS[difficulty].bossCd;
+        bossTimer = rand(80, 130) * DIFFS[difficulty].bossCd * bossCooldownMul();
         if (killer === player) {
           stats.bossKills++;
           player.len = Math.min(player.len + 30, 520);
@@ -941,7 +941,7 @@
         setTimeout(() => {
           if (!snakes.includes(this)) return;
           this.reset();
-          const ramp = player && !player.dead ? Math.min(60, player.score / 200) : 0;
+          const ramp = player && !player.dead ? Math.min(140, player.score / 110) : 0;
           this.len = rand(START_LEN, DIFFS[difficulty].botLen + ramp);
         }, rand(1500, 4000));
       }
@@ -976,17 +976,28 @@
   // ---------- Boss events ----------
   let boss = null;
   let bossTimer = 55;
+  let lastMilestone = 0;
+
+  // Escalation: as your score climbs (i.e. once you dominate), threats
+  // scale up so the late game keeps its teeth instead of going stale.
+  // Returns 0 → 1+ "heat".
+  function heat() {
+    return player ? Math.min(player.score / 15000, 2) : 0;   // caps at ~30k score
+  }
+  // Boss cooldown shrinks with heat (more frequent at high score).
+  function bossCooldownMul() { return clamp(1 - heat() * 0.4, 0.35, 1); }
 
   function spawnBoss() {
     // Defensive: never leave an orphaned boss in the roster.
     snakes = snakes.filter(s => !s.isBoss);
     boss = new Snake("☠ " + BOSS_NAMES[(Math.random() * BOSS_NAMES.length) | 0], BOSS_SKIN, true);
     boss.isBoss = true;
-    boss.hp = 3;
-    boss.maxHp = 3;
-    boss.len = 190;
+    // Tougher & bigger bosses the higher you've climbed.
+    const h = heat();
+    boss.hp = boss.maxHp = clamp(3 + Math.round(h * 1.5), 3, 6);
+    boss.len = 190 + h * 90;
     snakes.push(boss);
-    showToast("⚠ " + boss.name.slice(2) + " HAS ENTERED THE ARENA", "#ff4d6d");
+    showToast("⚠ " + boss.name.slice(2) + " HAS ENTERED THE ARENA" + (boss.hp > 3 ? " (" + boss.hp + " HP)" : ""), "#ff4d6d");
     audio.bossSpawn();
   }
 
@@ -1278,6 +1289,7 @@
     bossTimer = (spectating ? 20 : 55) * diff.bossCd;
     phantom = null;
     phantomTimer = (spectating ? 50 : 90) * diff.bossCd;
+    lastMilestone = 0;
     paused = false;
     el("pause-overlay").classList.add("hidden");
 
@@ -1883,7 +1895,7 @@
         if (phantomLife <= 0) {
           phantom.dead = true;
           spawnBurst(phantom.head.x, phantom.head.y, 210);
-          phantomTimer = rand(100, 160) * DIFFS[difficulty].bossCd;
+          phantomTimer = rand(100, 160) * DIFFS[difficulty].bossCd * bossCooldownMul();
         } else {
           drainNearPhantom(dt);
         }
@@ -1904,6 +1916,25 @@
       }
 
       scoreValue.textContent = (player ? player.score : focus ? focus.score : 0).toLocaleString();
+
+      // Escalation milestones — signal that the arena is getting harder.
+      // (Not in Kid Mode, which is deliberately calm.)
+      if (player && !player.dead && !DIFFS[difficulty].calm) {
+        const ms = [
+          [5000, "⚠ THE ARENA GROWS RESTLESS — tougher bosses hunt you now"],
+          [10000, "☠ APEX PREDATOR — the arena wants you gone. Bosses swarm."],
+          [20000, "🔥 LEGEND — nothing is safe. Survive if you can."]
+        ];
+        for (const [thresh, msg] of ms) {
+          if (player.score >= thresh && lastMilestone < thresh) {
+            lastMilestone = thresh;
+            showToast(msg, "#ff4d6d");
+            audio.bossSpawn();
+            break;
+          }
+        }
+      }
+
       updateLeaderboard(dt);
       drawMinimap();
     } else if (!paused && player && player.dead) {

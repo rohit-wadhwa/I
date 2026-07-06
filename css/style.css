@@ -882,6 +882,24 @@ body.touch #hud-version { bottom: 5px; left: 108px; }
   #update-pill { font-size: 15px; padding: 13px 26px; bottom: 100px; }
 }
 
+/* Large screens (tablet landscape / desktop): use the width — the menu
+   becomes a proper wide page, not a tall narrow popup. Placed AFTER the
+   tablet tier so its card width wins while touch-target sizes are kept. */
+@media (min-width: 860px) {
+  .menu-card { width: min(900px, 94vw); padding: 40px 52px; }
+  .menu-card.wide { width: min(760px, 92vw); }
+  #menu-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    align-items: start;
+    margin-top: 18px;
+  }
+  #menu-stats > * { margin-top: 0; }
+  .how-to { max-width: 700px; margin-left: auto; margin-right: auto; }
+  .menu-links { max-width: 700px; margin-left: auto; margin-right: auto; }
+}
+
 @media (max-width: 600px) {
   #leaderboard { min-width: 150px; padding: 8px 12px; }
   #leaderboard-list li { font-size: 11px; }

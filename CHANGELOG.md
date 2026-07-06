@@ -6,6 +6,11 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.7.0
+- **Late-game escalation** — a player fed back that past ~7K points the arena went stale with no fresh challenge. The threat now scales with your score ("heat"): bosses grow tougher (3 → 6 HP) and longer, bosses **and** the phantom spawn more often (cooldowns shrink up to ~65%), and slain rivals respawn bigger. Milestone warnings fire at 5K / 10K / 20K so you feel the arena turning on you. Kid Mode stays deliberately calm (no escalation).
+- **Big-screen menu is a proper page** — on wide screens (≥860px) the menu is no longer a tall narrow popup floating in black. The card widens (up to 900px) and Level / Arena Intensity / Daily Challenge sit in a 3-column row, with the how-to hints in two centered columns. Touch-target sizing on tablets is untouched.
+- Version display confirmed everywhere for easy bug reports: HUD (bottom-left), menu footer, About screen, and baked into shared screenshots and result cards.
+
 ## 2.6.1
 - **Memory/battery fix** — the food array had a floor (620) but no ceiling, so death/boost drops grew it unbounded (620 → 4,000+ over a long game), slowly heating the CPU and growing memory. Now hard-capped at 1,300 (oldest surplus culled).
 - **Battery** — a paused tab (incl. auto-pause on a backgrounded tab) now skips all update *and* rendering instead of redrawing 60×/sec.
