@@ -731,6 +731,56 @@ body.touch #boost-hint { display: none; }
   text-shadow: 0 0 10px rgba(160, 110, 255, 0.5);
 }
 
+/* Challenges ladder */
+.challenge-chip {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #67e8f9;
+  background: rgba(103, 232, 249, 0.08);
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.challenge-chip:hover { background: rgba(103, 232, 249, 0.16); }
+.challenge-chip:active { transform: scale(0.97); }
+
+.challenge-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 8px 0 4px;
+  text-align: left;
+}
+.challenge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.62;
+}
+.challenge-row.done {
+  opacity: 1;
+  border-color: rgba(103, 232, 249, 0.5);
+  background: rgba(103, 232, 249, 0.08);
+}
+.challenge-row .ch-icon { font-size: 20px; width: 24px; text-align: center; flex: none; }
+.challenge-row .ch-desc { flex: 1; font-size: 14px; color: var(--text); }
+.challenge-row .ch-check { font-size: 18px; font-weight: 700; color: var(--muted); flex: none; }
+.challenge-row.done .ch-check { color: #67e8f9; text-shadow: 0 0 10px rgba(103, 232, 249, 0.6); }
+
+@media (min-width: 720px) {
+  .challenge-list { grid-template-columns: 1fr 1fr; }
+}
+
 /* Buy Me a Coffee — BMC brand yellow, tasteful */
 .coffee-btn {
   display: block;

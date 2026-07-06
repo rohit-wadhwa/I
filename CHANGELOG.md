@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.8.0
+- **Challenges ladder** — a curated set of **12 one-run goals** (reach length 150/300, score 3K/10K/25K, 3/8 kills, slay 1/2 bosses, survive 3 min, reach Leviathan, 5K in Chaos). Completion is permanent and gives late-game play a point beyond "survive longer" — the boredom feedback, answered with *structure* instead of just more difficulty. Open it from the new **🎯 Challenges** menu button or the progress chip. Complete 6 to unlock the **Vanguard** skin and all 12 for **Champion** 👑 (wired through the existing skin-unlock system; reuses our stats/localStorage — no server). Inspired by Snake Clash's Tower of Challenges and Little Big Snake's missions.
+
 ## 2.7.1
 - **Responsive polish (audited across 16 device sizes)** — no horizontal overflow anywhere; touch targets stay 48px on phones / 67px on tablets.
   - **Landscape phones** (e.g. 844×390): the oversized logo + tagline used to eat the whole height and bury the skins and the *Enter the Arena* button below the fold. On short viewports (`max-height:560px`) the header now compresses so the CTA is reachable with little or no scrolling.

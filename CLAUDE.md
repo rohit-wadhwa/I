@@ -53,11 +53,13 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
   this sandbox. Work around it by writing results to `document.title` and reading
   with `page.title()` (strings are safe).
 
-## Feature map (as of v2.6.0)
+## Feature map (as of v2.8.0)
 Evolution (5 tiers) · boost (burns mass) · power-ups (⚡ overdrive, 🧲 magnet,
-🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) · bosses (3 HP) · phantom (avoid,
-drains) · Cosmic Shards + secret skins + Konami/logo-tap cheat · 14 skins ·
-endless XP levels · daily challenges · ghost/watch mode · 4 arena intensities
+🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) · bosses (3–6 HP, scale with
+score) · phantom (avoid, drains) · Cosmic Shards + secret skins + Konami/logo-tap
+cheat · 16 skins · endless XP levels · daily challenges · 12-goal Challenges
+ladder (Vanguard/Champion reward skins) · late-game escalation (heat) ·
+ghost/watch mode · 4 arena intensities
 (Kids/Chill/Classic/Chaos) · pause · sound (Web Audio, no files) · sharing
 (result card, screenshot) · self-updating · Buy Me a Coffee.
 

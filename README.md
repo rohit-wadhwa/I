@@ -65,8 +65,9 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 ## Skins, dailies & bosses (v1.3.0)
 
 - **Glossy 3D rendering** — every body segment, head and orb is a pre-rendered specular sphere sprite with soft drop shadows
-- **14-skin collection** — 6 free, 8 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges); locked skins show their unlock condition, and bots model the whole catalog in-game
+- **16-skin collection** — 6 free, 10 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges, and the Challenges ladder); locked skins show their unlock condition, and bots model the whole catalog in-game
 - **Daily challenges** — a rotating goal each day (score / kills / orbs eaten) with a progress bar on the menu; completions count toward the Galaxy skin
+- **Challenges ladder** (v2.8.0) — 12 permanent one-run goals (reach length 150/300, score 3K/10K/25K, 3/8 kills, slay 1/2 bosses, survive 3 min, reach Leviathan, 5K in Chaos), opened from the 🎯 menu button; complete 6 for the **Vanguard** skin and all 12 for **Champion** 👑
 - **Boss events** — every couple of minutes a 3-HP boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body three times to defeat it for a mass bonus and the Ember Lord skin
 - **Crown on the leader** — the current #1 serpent wears a golden crown in the arena
 - Kill-counter chip in the HUD; "Skin unlocked" toasts

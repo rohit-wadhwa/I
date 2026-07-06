@@ -60,7 +60,7 @@ async function startGame(page) {
   // ---- Menu ----
   console.log("\nMenu & version display");
   const skins = await page.locator(".skin-swatch").count();
-  check("14 skin swatches render", skins === 14, "got " + skins);
+  check("16 skin swatches render", skins === 16, "got " + skins);
   const menuVer = (await page.textContent("#version-tag")).trim();
   check("menu footer shows v" + EXPECTED_VERSION, menuVer.startsWith("v" + EXPECTED_VERSION), "got '" + menuVer + "'");
 
@@ -152,6 +152,28 @@ async function startGame(page) {
   }));
   check("length capped at 520", decouple.len <= 520, "len=" + decouple.len);
   check("score keeps rising past length cap", decouple.score >= decouple.scoreBefore, JSON.stringify(decouple));
+
+  // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
+  console.log("\nChallenges ladder");
+  const ch = JSON.parse(await page.evaluate(() => {
+    const total = __ns.CHALLENGES.length;
+    // A modest run: score 3,200, 3 kills, length peak 160, 1 boss, 40s, Classic.
+    __ns.checkChallenges({ score: 3200, kills: 3, orbs: 20, peakLen: 160, seconds: 40, diff: 2, bossKills: 1 });
+    const after1 = __ns.stats.challengesDone;
+    // Re-running the same run marks nothing new (idempotent).
+    __ns.checkChallenges({ score: 3200, kills: 3, orbs: 20, peakLen: 160, seconds: 40, diff: 2, bossKills: 1 });
+    const after2 = __ns.stats.challengesDone;
+    // A monster run completes the rest.
+    __ns.checkChallenges({ score: 30000, kills: 10, orbs: 200, peakLen: 400, seconds: 400, diff: 3, bossKills: 2 });
+    return JSON.stringify({ total, after1, after2, all: __ns.stats.challengesDone,
+      champion: !!__ns.unlocked.champion, vanguard: !!__ns.unlocked.vanguard });
+  }));
+  check("total challenges is 12", ch.total === 12, "total=" + ch.total);
+  check("a run completes its matching goals", ch.after1 >= 4 && ch.after1 < ch.total, "after1=" + ch.after1);
+  check("re-running the same run adds nothing (idempotent)", ch.after2 === ch.after1, "after2=" + ch.after2);
+  check("a monster run completes all 12", ch.all === ch.total, "all=" + ch.all);
+  check("Vanguard skin unlocks at 6", ch.vanguard === true);
+  check("Champion skin unlocks at 12", ch.champion === true);
 
   // ---- No JS errors the whole run ----
   console.log("\nRuntime health");

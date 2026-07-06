@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.7.1";
+  const VERSION = "2.8.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -56,6 +56,10 @@
       unlock: { desc: "Complete 3 daily challenges", test: s => s.dailies >= 3 } },
     { key: "chrome",    name: "Chrome",       colors: [[220, 8, 78], [220, 8, 46]],
       unlock: { desc: "Get 25 total kills", test: s => s.totalKills >= 25 } },
+    { key: "vanguard",  name: "Vanguard",     colors: [[165, 80, 55], [200, 85, 62]],
+      unlock: { desc: "Complete 6 challenges", test: s => s.challengesDone >= 6 } },
+    { key: "champion",  name: "Champion",     colors: [[45, 95, 60], [280, 80, 60], [190, 85, 62]], rainbow: true,
+      unlock: { desc: "Complete every challenge", test: s => s.challengesDone >= 12 } },
     // Secret skins — hidden from the picker until earned. No auto-test;
     // granted explicitly by shards or the cheat code.
     { key: "stardust", name: "Stardust",     colors: [[260, 60, 70], [200, 70, 78], [320, 60, 72]],
@@ -218,11 +222,13 @@
   }
   const prefs = loadPrefs();
   const stats = Object.assign(
-    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0, shards: 0 },
+    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0, shards: 0, challengesDone: 0 },
     prefs.stats
   );
   prefs.stats = stats;
   const unlocked = prefs.unlocked = prefs.unlocked || {};
+  const challengesDone = prefs.challenges = prefs.challenges || {};   // { id: true }
+  stats.challengesDone = Object.keys(challengesDone).length;
   const isUnlocked = (def) => !def.unlock || unlocked[def.key];
 
   function checkUnlocks() {
@@ -274,6 +280,65 @@
     el("daily-status").textContent = d.done
       ? "Complete ✓"
       : Math.floor(Math.min(d.progress, t.target)).toLocaleString() + " / " + t.target.toLocaleString();
+  }
+
+  // ---------- Challenges ladder ----------
+  // A curated set of one-run goals — structure for players who find endless
+  // mode aimless (esp. late game). Each is checked against a single run's
+  // result at death; completion is permanent and drives two reward skins.
+  const CHALLENGES = [
+    { id: "len150",  icon: "📏", desc: "Reach length 150 in a run",        test: r => r.peakLen >= 150 },
+    { id: "kill3",   icon: "⚔️", desc: "Get 3 kills in a run",             test: r => r.kills >= 3 },
+    { id: "sc3k",    icon: "✨", desc: "Score 3,000 in a single run",      test: r => r.score >= 3000 },
+    { id: "boss1",   icon: "👹", desc: "Slay a boss serpent",              test: r => r.bossKills >= 1 },
+    { id: "surv3",   icon: "⏱️", desc: "Survive 3 minutes in one run",     test: r => r.seconds >= 180 },
+    { id: "len300",  icon: "🐍", desc: "Reach length 300 in a run",        test: r => r.peakLen >= 300 },
+    { id: "sc10k",   icon: "💫", desc: "Score 10,000 in a single run",     test: r => r.score >= 10000 },
+    { id: "kill8",   icon: "🗡️", desc: "Get 8 kills in a run",             test: r => r.kills >= 8 },
+    { id: "levia",   icon: "👑", desc: "Reach Leviathan form in a run",    test: r => r.peakLen >= 340 },
+    { id: "boss2",   icon: "☠",  desc: "Slay 2 bosses in one run",         test: r => r.bossKills >= 2 },
+    { id: "chaos5k", icon: "🔥", desc: "Score 5,000 in Chaos intensity",   test: r => r.diff === 3 && r.score >= 5000 },
+    { id: "sc25k",   icon: "🌟", desc: "Score 25,000 in a single run",     test: r => r.score >= 25000 }
+  ];
+
+  // Evaluate the just-finished run against every unmet challenge.
+  function checkChallenges(run) {
+    let newly = 0;
+    for (const c of CHALLENGES) {
+      if (!challengesDone[c.id] && c.test(run)) { challengesDone[c.id] = true; newly++; }
+    }
+    if (!newly) return;
+    stats.challengesDone = Object.keys(challengesDone).length;
+    savePrefs(prefs);
+    checkUnlocks();   // may grant Vanguard (6) / Champion (12)
+    // Delay so it doesn't collide with the level-up toast on the same death.
+    setTimeout(() => {
+      showToast("🎯 CHALLENGE" + (newly > 1 ? "S" : "") + " COMPLETE — " +
+        stats.challengesDone + " / " + CHALLENGES.length, "#67e8f9");
+      audio.unlock();
+    }, 1800);
+  }
+
+  function renderChallenges() {
+    const done = stats.challengesDone;
+    const prog = el("challenges-progress");
+    if (prog) prog.textContent = done + " / " + CHALLENGES.length + " complete" +
+      (done >= CHALLENGES.length ? " — Champion unlocked 👑" : "");
+    const list = el("challenges-list");
+    if (list) {
+      list.innerHTML = "";
+      for (const c of CHALLENGES) {
+        const ok = !!challengesDone[c.id];
+        const row = document.createElement("div");
+        row.className = "challenge-row" + (ok ? " done" : "");
+        row.innerHTML = '<span class="ch-icon">' + c.icon + '</span>' +
+          '<span class="ch-desc">' + c.desc + '</span>' +
+          '<span class="ch-check">' + (ok ? "✓" : "○") + '</span>';
+        list.appendChild(row);
+      }
+    }
+    const chip = el("challenge-chip");
+    if (chip) chip.textContent = "🎯 " + done + " / " + CHALLENGES.length + " challenges";
   }
 
   // ---------- Audio ----------
@@ -930,6 +995,7 @@
         bossTimer = rand(80, 130) * DIFFS[difficulty].bossCd * bossCooldownMul();
         if (killer === player) {
           stats.bossKills++;
+          player.bossKills = (player.bossKills || 0) + 1;   // per-run, for challenges
           player.len = Math.min(player.len + 30, 520);
           player.scorePoints += 300;   // slaying a boss pays even at max size
           checkUnlocks();
@@ -1233,6 +1299,7 @@
   let selectedSkin = clamp(prefs.skin ?? 0, 0, SKIN_DEFS.length - 1);
   let scoreHistory = [];      // [seconds, score] samples for the run chart
   let runStart = 0;
+  let runPeakLen = 0;         // peak body length this run (for length challenges)
   let deathSnap = null;       // frozen frame captured at the moment of death
   let leader = null;          // current #1 by score — wears the crown
 
@@ -1290,6 +1357,7 @@
     phantom = null;
     phantomTimer = (spectating ? 50 : 90) * diff.bossCd;
     lastMilestone = 0;
+    runPeakLen = 0;
     paused = false;
     el("pause-overlay").classList.add("hidden");
 
@@ -1326,6 +1394,15 @@
     stats.bestRun = Math.max(stats.bestRun, score);
     stats.maxTier = Math.max(stats.maxTier, player.tier);
     addDailyProgress(score, player.kills, player.orbsEaten);
+    checkChallenges({
+      score,
+      kills: player.kills,
+      orbs: player.orbsEaten,
+      peakLen: Math.max(runPeakLen, player.len),
+      seconds: (performance.now() - runStart) / 1000,
+      diff: difficulty,
+      bossKills: player.bossKills || 0
+    });
     checkUnlocks();
     savePrefs(prefs);
 
@@ -1916,6 +1993,7 @@
       }
 
       scoreValue.textContent = (player ? player.score : focus ? focus.score : 0).toLocaleString();
+      if (player && !player.dead) runPeakLen = Math.max(runPeakLen, player.len);
 
       // Escalation milestones — signal that the arena is getting harder.
       // (Not in Kid Mode, which is deliberately calm.)
@@ -2239,6 +2317,7 @@
     renderDaily();
     renderLevel();
     renderWelcome();
+    renderChallenges();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
   }
@@ -2313,8 +2392,10 @@
     // mutates orphaned objects and is never persisted again.
     for (const k of Object.keys(stats)) stats[k] = 0;
     for (const k of Object.keys(unlocked)) delete unlocked[k];
+    for (const k of Object.keys(challengesDone)) delete challengesDone[k];
     prefs.stats = stats;
     prefs.unlocked = unlocked;
+    prefs.challenges = challengesDone;
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
     el("nickname").value = "";
     selectedSkin = 0;
@@ -2328,6 +2409,7 @@
     renderLevel();
     renderWelcome();
     renderShardChip();
+    renderChallenges();
     flashBtn(e.currentTarget, "Progress cleared");
   });
 
@@ -2336,6 +2418,9 @@
   el("tutorial-close").addEventListener("click", () => el("tutorial").classList.add("hidden"));
   el("about-btn").addEventListener("click", () => el("about").classList.remove("hidden"));
   el("about-close").addEventListener("click", () => el("about").classList.add("hidden"));
+  el("challenges-btn").addEventListener("click", () => { renderChallenges(); el("challenges").classList.remove("hidden"); audio.click(); });
+  el("challenges-close").addEventListener("click", () => el("challenges").classList.add("hidden"));
+  el("challenge-chip").addEventListener("click", () => { renderChallenges(); el("challenges").classList.remove("hidden"); audio.click(); });
 
   el("version-tag").textContent = "v" + VERSION + " ↻";
   el("hud-version").textContent = "v" + VERSION;
@@ -2549,6 +2634,7 @@
     renderDaily();
     renderLevel();
     renderWelcome();
+    renderChallenges();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
   });
@@ -2563,6 +2649,7 @@
   renderWelcome();
   renderDiffSeg();
   renderShardChip();
+  renderChallenges();
   el("fx-btn").textContent = "FX: " + (fxLite ? "Lite" : "Full");
 
   // Idle background: a few bots roam the arena behind the menu.
@@ -2591,7 +2678,10 @@
     spawnShard,
     killCueIntensity,
     stats,
-    unlocked
+    unlocked,
+    CHALLENGES,
+    challengesDone,
+    checkChallenges
   };
 
   // Drive the idle scene from the same rAF loop.

@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=2.7.1" />
+  <link rel="stylesheet" href="css/style.css?v=2.8.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -104,6 +104,7 @@
 
       <div class="menu-links">
         <button id="tutorial-btn" class="ghost-btn small">📖 Tutorial</button>
+        <button id="challenges-btn" class="ghost-btn small">🎯 Challenges</button>
         <button id="about-btn" class="ghost-btn small">💡 About</button>
         <button id="share-game-btn" class="ghost-btn small">📤 Share game</button>
         <button id="mute-btn-menu" class="ghost-btn small">🔊 Sound on</button>
@@ -122,6 +123,7 @@
         <div><b>XP</b> — every run levels you up</div>
       </div>
       <div id="best-score" class="best"></div>
+      <button id="challenge-chip" class="challenge-chip"></button>
       <div id="shard-count" class="shard-chip hidden"></div>
 
       <a id="coffee-btn" class="coffee-btn" href="https://buymeacoffee.com/rohit.wadhwa" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>
@@ -183,6 +185,17 @@
     </div>
   </div>
 
+  <!-- Challenges ladder -->
+  <div id="challenges" class="overlay top hidden">
+    <div class="menu-card wide">
+      <h2 class="overlay-title">CHALLENGES</h2>
+      <p class="about-text small">One-run goals for glory. Complete 6 to unlock the <b>Vanguard</b> skin, and all 12 for <b>Champion</b> 👑.</p>
+      <p class="hud-label about-sub" id="challenges-progress"></p>
+      <div id="challenges-list" class="challenge-list"></div>
+      <button id="challenges-close" class="primary-btn">CLOSE</button>
+    </div>
+  </div>
+
   <!-- Death screen -->
   <div id="death-screen" class="overlay hidden">
     <div class="menu-card">
@@ -217,6 +230,6 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=2.7.1"></script>
+  <script src="js/game.js?v=2.8.0"></script>
 </body>
 </html>

@@ -29,7 +29,8 @@ when present, otherwise Playwright's own download.
 | Check | Guards |
 |---|---|
 | `check-version.js` | The **#1 convention**: `VERSION` in game.js, `version.json`, and both `?v=` queries in index.html must agree — or the self-updater breaks. |
-| Menu / skins / version label | Menu renders, 14 skins, version shown on menu footer + HUD. |
+| Menu / skins / version label | Menu renders, 16 skins, version shown on menu footer + HUD. |
+| Challenges ladder | A run's result marks matching goals done (idempotent); 6 → Vanguard skin, 12 → Champion. |
 | Wide-screen menu layout | On ≥860px the stats sit in a 3-column grid and the card widens (the v2.7.0 "proper page", not a tall popup). |
 | Late-game escalation | Boss HP scales 3→6 and length grows with score; milestone toast fires (v2.7.0). |
 | Self-healing physics | Inject `NaN` into the head + blow a segment out — after a few frames every coord is finite and the gap is gone. This is the guard against the "snake explodes after hours" bug. |
