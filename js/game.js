@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.12.2";
+  const VERSION = "2.12.3";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -1577,6 +1577,7 @@
   let running = false;
   let spectating = false;
   let paused = false;
+  let stalePause = false;   // this pause was forced by a long idle (stale tab)
   let difficulty = clamp(prefs.difficulty ?? 2, 0, DIFFS.length - 1);   // default Classic
   let fxLite = !!prefs.fxLite;
   let frameDt = 0.016;
@@ -1660,6 +1661,8 @@
     bestRank = 99;
     scoreHistory = [[0, 0]];
     runStart = performance.now();
+    lastT = performance.now();   // fresh frame clock — a stale menu clock must
+    stalePause = false;          // not spuriously gap-pause the first frame
     running = true;
     menu.classList.add("hidden");
     deathScreen.classList.add("hidden");
@@ -1816,6 +1819,27 @@
         b.x = a.x - Math.cos(s.dir) * spacing;
         b.y = a.y - Math.sin(s.dir) * spacing;
       }
+    }
+  }
+
+  // Fully re-tighten a snake whose segments spread out during a long idle
+  // (backgrounded tab / slept device): pull each segment to exactly `spacing`
+  // behind the one ahead, following the chain's current direction. Preserves
+  // the body's shape but removes the gaps, so play resumes with a clean serpent
+  // instead of the mangled scatter of fins a stale tab leaves behind. Stronger
+  // than sanitizeSnake (which only fixes gaps beyond a leash); used on resume.
+  function reformSnake(s) {
+    if (!s.segs || s.segs.length < 2) return;
+    const h = s.segs[0];
+    if (!isFinite(h.x) || !isFinite(h.y)) { const p = randomWorldPoint(500); h.x = p.x; h.y = p.y; }
+    if (!isFinite(s.dir)) s.dir = s.targetDir = 0;
+    // Lay the whole body in a straight line directly behind the head, exactly
+    // `spacing` apart — a guaranteed-clean serpent regardless of how mangled the
+    // stale-tab state was. It re-curves naturally the moment the head moves.
+    const sp = s.spacing, cx = Math.cos(s.dir), cy = Math.sin(s.dir);
+    for (let i = 1; i < s.segs.length; i++) {
+      s.segs[i].x = h.x - cx * i * sp;
+      s.segs[i].y = h.y - cy * i * sp;
     }
   }
 
@@ -2303,6 +2327,17 @@
     const dt = gap > 250 ? 0 : clamp(gap / 1000, 0, 0.05);
     frameDt = dt;
 
+    // A long real-time gap means the tab was backgrounded / the device slept.
+    // Mobile browsers don't reliably fire `visibilitychange`, so auto-pause can
+    // miss it and the player returns to a live, mangled arena (spread-out
+    // snakes) — and maybe an unfair instant death. Catch it HERE, independent of
+    // visibilitychange: force the pause so the player always resumes cleanly.
+    if (gap > 1200 && running && !paused && !spectating && player && !player.dead) {
+      stalePause = true;   // resume will tidy the spread-out bodies
+      pauseGame();
+      return;
+    }
+
     // Paused (incl. auto-pause on a backgrounded tab): the scene is frozen
     // and covered by the overlay, so skip all update AND rendering. This
     // stops a left-open/paused tab from burning battery redrawing 60×/sec.
@@ -2663,6 +2698,11 @@
     if (!paused) return;
     paused = false;
     lastT = performance.now();   // first frame after resume gets a tiny dt
+    // Only tidy bodies when this pause was forced by a long idle (stale tab):
+    // those bodies really are spread out. A normal manual/tab-switch pause froze
+    // a CLEAN state, and reforming it would teleport every serpent's coils and
+    // silently change collision outcomes.
+    if (stalePause) { for (const s of snakes) if (!s.dead) reformSnake(s); stalePause = false; }
     el("pause-overlay").classList.add("hidden");
     if (audio.ctx && !audio.muted) audio.ctx.resume();
   }
@@ -2689,10 +2729,13 @@
     }
   });
   // Auto-pause when the tab loses focus mid-run — no sneaky deaths.
-  // On return, reset the frame clock so the first frame has a tiny dt.
+  // On return we deliberately do NOT reset the frame clock: the loop's dt-clamp
+  // already makes the first frame safe, and leaving the real gap intact lets the
+  // gap-detector in frame() force a pause even when the browser SKIPPED the
+  // 'hidden' event (common on mobile) but fired 'visible' — the whole point of
+  // the stale-tab guard. Resetting lastT here would silently defeat it.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pauseGame();
-    else lastT = performance.now();
   });
 
   function exitToMenu() {
@@ -2743,6 +2786,8 @@
     bestRank = 99;
     scoreHistory = [[0, 0]];
     runStart = performance.now();
+    lastT = performance.now();   // fresh clock (was spectating; may be stale)
+    stalePause = false;
     running = true;
     cam.x = player.head.x; cam.y = player.head.y;
     deathScreen.classList.add("hidden");
@@ -3072,6 +3117,7 @@
     growSnake,
     shrinkSnake,
     snakeMass,
+    reformSnake,
     combo,
     bumpCombo,
     comboMult,

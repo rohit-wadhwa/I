@@ -132,6 +132,42 @@ async function startGame(page) {
   check("all segment coords finite after NaN injection", healed.allFinite, JSON.stringify(healed));
   check("no lingering exploded gap", healed.maxGap < 500, "maxGap=" + healed.maxGap);
 
+  // ---- Stale-tab recovery (v2.12.3): reformSnake tidies a spread body ----
+  console.log("\nStale-tab recovery");
+  const reformed = JSON.parse(await page.evaluate(() => {
+    const s = __ns.player;
+    // scatter every segment far apart (what a long backgrounded tab leaves)
+    for (let i = 1; i < s.segs.length; i++) { s.segs[i].x = s.segs[0].x + i * 400; s.segs[i].y = s.segs[0].y + i * 137; }
+    __ns.reformSnake(s);
+    let maxGap = 0;
+    for (let i = 1; i < s.segs.length; i++) maxGap = Math.max(maxGap, Math.hypot(s.segs[i].x - s.segs[i - 1].x, s.segs[i].y - s.segs[i - 1].y));
+    return JSON.stringify({ maxGap: Math.round(maxGap), spacing: Math.round(s.spacing) });
+  }));
+  check("reformSnake tightens all gaps to ~spacing", reformed.maxGap <= reformed.spacing + 2, JSON.stringify(reformed));
+
+  // Force-pause on a long real-time gap: block the main thread >1.2s so the rAF
+  // loop sees a big gap on the next frame (simulates a backgrounded/slept tab).
+  const wasPaused = await page.evaluate(() => document.getElementById("pause-overlay").classList.contains("hidden"));
+  await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 1400) { /* stall */ } });
+  await page.waitForTimeout(250);   // let the next rAF frame run and detect the gap
+  const pausedNow = await page.evaluate(() => !document.getElementById("pause-overlay").classList.contains("hidden"));
+  check("a long frame gap force-pauses the game (stale-tab guard)", wasPaused && pausedNow, "wasHidden=" + wasPaused + " pausedNow=" + pausedNow);
+  await page.click("#resume-btn").catch(() => {});   // resume for the rest of the suite
+  await page.waitForTimeout(150);
+
+  // A MANUAL pause must NOT reform bodies (only stale-tab pauses do) — otherwise
+  // it would teleport every serpent's coils and change collision outcomes.
+  const manual = JSON.parse(await page.evaluate(() => {
+    const s = __ns.player;
+    s.segs[5].x = s.segs[0].x + 999; s.segs[5].y = s.segs[0].y - 777;   // distinctive offset
+    const before = { x: s.segs[5].x, y: s.segs[5].y };
+    document.getElementById("pause-btn").click();     // manual pause (stalePause stays false)
+    document.getElementById("resume-btn").click();    // resume
+    const after = { x: __ns.player.segs[5].x, y: __ns.player.segs[5].y };
+    return JSON.stringify({ moved: before.x !== after.x || before.y !== after.y });
+  }));
+  check("manual pause/resume does NOT reform bodies", manual.moved === false, JSON.stringify(manual));
+
   // ---- Food is hard-capped (v2.6.1 memory/battery fix) ----
   console.log("\nFood cap (memory/battery)");
   await page.evaluate(() => {
