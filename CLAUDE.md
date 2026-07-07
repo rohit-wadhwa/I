@@ -93,11 +93,44 @@ the moment-to-moment loop is the reward), and **polish over piling on** (make wh
 exists feel great — juice, balance, catchability, readability — before adding new
 systems). This has been a lot of careful, iterative work; keep that bar.
 
-## Roadmap / TODO
-- **Real multiplayer** (two friends, same arena) — needs a game server
-  (authoritative state + WebSocket). Separate backend project, not a client change.
+## Roadmap / TODO (pending, most-wanted first)
+Engagement — we built loop 1 (combos); two loops remain:
+- **Rank / tier ladder** (Bronze→Silver→Gold→Platinum→Diamond→Master by best run)
+  — the run-to-run "am I climbing?" meta. Client-only, no backend. Highest-value
+  pending gameplay item.
+- **Daily play streak** ("Day 3 🔥" + small escalating rewards) — day-to-day habit
+  hook. Client-only, localStorage.
+
+Backend (needs a small server — Supabase/Upstash free tier, all anonymous, no PII
+since kids play):
+- **Global leaderboard + live-player count + "N runs played worldwide" thank-you
+  counter.** This is the real answer to "who's playing / their scores / thank
+  them". (Vercel Web Analytics is already wired for anonymous *visit* counts and
+  must be enabled once in the Vercel dashboard → Project → Analytics → Enable.)
+- **Real multiplayer** (two friends, same arena) — authoritative state + WebSocket.
+  The largest, separate backend project.
+
+Smaller polish (weigh against restraint — the game is already feature-rich):
+- 3 rotating daily missions (vs today's single daily challenge).
+- Type-specific prey movement (frog hops, rabbit darts, grub crawls).
+- More mythic skins (Ouroboros, Jörmungandr, Quetzalcoatl) + maybe a Nagin
+  challenge-ladder goal.
+- Seasonal arena theming (rotating neon palette / monthly badge).
+- Power-up ideas discussed but NOT built (keep rare, retire a weak one if added):
+  🩹 Molt (survive a hit by shedding mass), Decoy/Doppelgänger, off-screen boss
+  direction arrows. We deliberately skip: companion pets & purchasable power
+  upgrades (pay-to-win / dilute skill), and licensed brands (Disney/Marvel/Harry
+  Potter — trademark/takedown risk; use public-domain mythology instead).
 
 ## Working agreement
 - Branch: `claude/snake-game-clone-nt3xc0`. Commit + push each change with a
   descriptive message; keep the CHANGELOG updated.
 - Do NOT put the model identifier in commits/PRs/code.
+- **Review before shipping.** For any nontrivial gameplay/engine change, run the
+  code-review agents (the `code-review` skill / parallel review sub-agents) and
+  fix real findings BEFORE committing — this has repeatedly caught bugs that
+  passed tests (leaderboard-mass leak, stale-tab pause defeat, Nagin sprite-cache
+  leak). For core-mechanic changes, also do a headless playtest capture as proof,
+  not just unit tests. Add/extend a `test/e2e.js` check for every new
+  feature/invariant; keep it stable (order tests so live-arena churn can't flake
+  size/leaderboard assertions).
