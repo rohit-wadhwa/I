@@ -219,14 +219,20 @@ async function startGame(page) {
   check("multiplier climbs ×2→×5 with the combo", cb.tiers === "2,3,4,5,5", cb.tiers);
   check("multiplier caps at ×5", cb.capped === 5);
   check("combo lapses back to ×1", cb.afterLapse === 1);
-  // score multiplication: identical food eaten at ×1 vs ×3
-  await page.evaluate(() => { __ns.player.scorePoints = 0; __ns.combo.mult = 1; __ns.combo.timer = 10; const h = __ns.player.head; __ns.spawnDropFood(h.x, h.y, 5, 200); });
-  await page.waitForTimeout(180);
-  const g1 = await page.evaluate(() => __ns.player.score);
-  await page.evaluate(() => { __ns.player.scorePoints = 0; __ns.combo.mult = 3; __ns.combo.timer = 10; const h = __ns.player.head; __ns.spawnDropFood(h.x, h.y, 5, 200); });
-  await page.waitForTimeout(180);
-  const g3 = await page.evaluate(() => __ns.player.score);
-  check("eating applies the multiplier (×3 ≈ 3× score)", g1 > 0 && g3 === g1 * 3, "g1=" + g1 + " g3=" + g3);
+  // score multiplication via a single deterministic catch (no ambient noise):
+  // a 400-point prey caught at ×3 must add exactly 1200.
+  const mtest = JSON.parse(await page.evaluate(() => {
+    __ns.player.scorePoints = 0;
+    __ns.combo.count = 10; __ns.combo.mult = 3; __ns.combo.timer = 10;   // lock ×3
+    __ns.critters.length = 0; __ns.spawnCritter();
+    const c = __ns.critters[0], h = __ns.player.head;
+    c.type = { emoji: "🐀", name: "Rat", score: 400, len: 0, size: 1, spd: 1 };
+    c.x = h.x; c.y = h.y;   // on the mouth
+    const before = __ns.player.score;
+    __ns.updateCritters(0.016);   // one catch
+    return JSON.stringify({ gain: __ns.player.score - before });
+  }));
+  check("multiplier applies to score (400 × ×3 = 1200)", mtest.gain === 1200, JSON.stringify(mtest));
 
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");

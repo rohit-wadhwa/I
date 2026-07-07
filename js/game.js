@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.10.0";
+  const VERSION = "2.11.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -462,6 +462,11 @@
       this.tone(base, 0.09, { type: "triangle", vol: 0.15 });
       this.tone(base * 1.5, 0.09, { type: "triangle", vol: 0.11, delay: 0.05 });
     },
+    // Soft double-chirp when prey scurries into the arena.
+    chirp() {
+      this.tone(1400, 0.05, { type: "sine", vol: 0.06, slide: 200 });
+      this.tone(1750, 0.05, { type: "sine", vol: 0.05, delay: 0.07, slide: 200 });
+    },
 
     eat() {
       const now = performance.now();
@@ -836,7 +841,15 @@
           this.len = Math.min(this.len + f.value, 520);
           this.scorePoints += f.value * 10 * (this === player ? comboMult() : 1);
           this.orbsEaten++;
-          if (this === player) { bumpCombo(1); audio.eat(); }
+          if (this === player) {
+            bumpCombo(1); audio.eat();
+            const now = performance.now();
+            if (now - lastFloat > 300) {   // throttle so it doesn't spam
+              lastFloat = now;
+              addFloater(h.x, h.y - this.radius, "+" + Math.round(f.value * 10 * comboMult()),
+                comboMult() > 1 ? "#ffd75e" : "#bfe9ff");
+            }
+          }
           removeFood(f);
         } else if (d2 < magnet * magnet) {
           // Orbs accelerate toward the mouth — gentle at the edge of the
@@ -1014,7 +1027,11 @@
       }
       this.dead = true;
       if (killer) killer.kills++;
-      if (killer === player && this !== player) bumpCombo(5);   // a kill supercharges the combo
+      if (killer === player && this !== player) {
+        bumpCombo(5);   // a kill supercharges the combo
+        addFloater(this.head.x, this.head.y, "KILL!", "#ff6b8a", true);
+        addShake(this.isBoss ? 9 : 4);
+      }
 
       // Body bursts into orbs worth most of its mass. Bigger serpents
       // shatter into more, fatter orbs — a visibly richer feast.
@@ -1029,6 +1046,7 @@
 
       if (this === player) {
         audio.death();
+        addShake(11);
         onPlayerDeath(cause);
       } else if (this.isBoss) {
         showToast("BOSS DEFEATED!", "#4de3ff");
@@ -1106,6 +1124,7 @@
     snakes.push(boss);
     showToast("⚠ " + boss.name.slice(2) + " HAS ENTERED THE ARENA" + (boss.hp > 3 ? " (" + boss.hp + " HP)" : ""), "#ff4d6d");
     audio.bossSpawn();
+    addShake(7);
   }
 
   // ---------- Phantom haunting ----------
@@ -1331,21 +1350,22 @@
   // fun chase, but rare (max 2) so it stays a treat, not a food staple.
   const critters = [];
   let critterTimer = rand(8, 16);
-  const CRITTER_R = 22, CRITTER_FLEE = 220, CRITTER_MAX = 2;
+  const CRITTER_R = 24, CRITTER_FLEE = 195, CRITTER_MAX = 2;
 
-  // A little bestiary of prey — not just a mouse. Bigger, faster ones pay more;
-  // the golden rat is a rare jackpot. `w` = spawn weight, `size` = draw scale,
-  // `spd` = flee-speed multiplier.
+  // A little bestiary of prey — not just a mouse. Bigger ones pay more; the
+  // golden rat is a rare jackpot. `w` = spawn weight, `size` = draw scale,
+  // `spd` = flee-speed multiplier. Multipliers kept modest so even a
+  // non-boosting player (esp. kids) can run prey down once it tires.
   const PREY_TYPES = [
     { emoji: "🐀", name: "Rat",     score: 400, len: 12, size: 1.0,  spd: 1.0,  w: 5 },
-    { emoji: "🐸", name: "Frog",    score: 450, len: 14, size: 1.05, spd: 1.15, w: 4 },
-    { emoji: "🐤", name: "Chick",   score: 400, len: 12, size: 0.95, spd: 1.1,  w: 4 },
-    { emoji: "🐹", name: "Hamster", score: 420, len: 13, size: 1.0,  spd: 0.95, w: 4 },
-    { emoji: "🐇", name: "Rabbit",  score: 600, len: 16, size: 1.15, spd: 1.35, w: 3 },
-    { emoji: "🦎", name: "Lizard",  score: 500, len: 15, size: 1.0,  spd: 1.25, w: 3 },
-    { emoji: "🐛", name: "Grub",    score: 300, len: 9,  size: 0.85, spd: 0.7,  w: 3 },
-    { emoji: "🐰", name: "Bunny",   score: 600, len: 16, size: 1.15, spd: 1.3,  w: 2 },
-    { emoji: "🌟🐀", name: "Golden Rat", score: 900, len: 20, size: 1.2, spd: 1.4, w: 1, gold: true }
+    { emoji: "🐸", name: "Frog",    score: 450, len: 14, size: 1.05, spd: 1.08, w: 4 },
+    { emoji: "🐤", name: "Chick",   score: 400, len: 12, size: 0.95, spd: 1.05, w: 4 },
+    { emoji: "🐹", name: "Hamster", score: 420, len: 13, size: 1.0,  spd: 0.9,  w: 4 },
+    { emoji: "🐇", name: "Rabbit",  score: 600, len: 16, size: 1.15, spd: 1.18, w: 3 },
+    { emoji: "🦎", name: "Lizard",  score: 500, len: 15, size: 1.0,  spd: 1.12, w: 3 },
+    { emoji: "🐛", name: "Grub",    score: 300, len: 9,  size: 0.85, spd: 0.65, w: 3 },
+    { emoji: "🐰", name: "Bunny",   score: 600, len: 16, size: 1.15, spd: 1.16, w: 2 },
+    { emoji: "🌟🐀", name: "Golden Rat", score: 900, len: 20, size: 1.2, spd: 1.22, w: 1, gold: true }
   ];
   const PREY_WEIGHT = PREY_TYPES.reduce((a, t) => a + t.w, 0);
   function pickPrey() {
@@ -1356,17 +1376,21 @@
 
   function spawnCritter() {
     const p = randomWorldPoint(500);
-    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, stam: 2.6, life: 22, bob: rand(0, 6.28), type: pickPrey() });
+    critters.push({ x: p.x, y: p.y, vx: 0, vy: 0, dir: rand(0, Math.PI * 2), wander: 0, panic: 0, stam: 1.7, life: 22, bob: rand(0, 6.28), type: pickPrey() });
+    if (player && !player.dead) audio.chirp();
   }
   function catchCritter(s, c) {
     const t = c.type || PREY_TYPES[0];
     spawnBurst(c.x, c.y, t.gold ? 48 : 22);
     if (s === player) {
       player.len = Math.min(player.len + t.len, 520);
-      player.scorePoints += t.score * comboMult();
+      const gain = t.score * comboMult();
+      player.scorePoints += gain;
       player.orbsEaten++;
       bumpCombo(3);   // a catch is worth a few combo points
       audio.critter();
+      addFloater(c.x, c.y - 20, "+" + Math.round(gain), t.gold ? "#ffd75e" : "#ffca6b", true);
+      addShake(t.gold ? 6 : 3);
       showToast(t.emoji + " " + (t.gold ? "JACKPOT — " : "TASTY ") + t.name.toUpperCase() + "!  +" + t.score,
         t.gold ? "#ffd75e" : "#ffca6b");
     } else {
@@ -1390,7 +1414,7 @@
         if (d < nd) { nd = d; near = s; }
       }
       if (near) {
-        const eatR = near.radius + CRITTER_R + 8;   // a small lunge/grab window
+        const eatR = near.radius + CRITTER_R + 14;   // a generous lunge/grab window
         if (nd < eatR * eatR) { critters.splice(i, 1); catchCritter(near, c); continue; }
       }
       // steer: flee a close serpent, otherwise wander
@@ -1405,13 +1429,15 @@
         ax = Math.cos(c.dir); ay = Math.sin(c.dir);
         c.panic = Math.max(0, c.panic - dt);
       }
-      // Stamina: prey sprints, then tires so a determined chase (esp. with a
-      // boost) always closes in. Speeds sit BELOW the player's boost (236) so
-      // prey is fast but never uncatchable — the old 340+ made it impossible.
+      // Stamina: prey sprints briefly, then tires so even a NON-boosting player
+      // (kids) can run it down. Fresh sprint (140) sits just above base speed
+      // (~132); tired (72) drops below it, so the chase always closes. Kid Mode
+      // ('calm') makes prey extra gentle so it's an easy catch.
       if (fleeing) c.stam = Math.max(0, c.stam - dt);
-      else c.stam = Math.min(2.6, c.stam + dt * 0.7);
+      else c.stam = Math.min(1.7, c.stam + dt * 0.5);
       const tired = c.stam <= 0;
-      const base = c.panic > 0 ? (tired ? 95 : 165) : 62;
+      const gentle = DIFFS[difficulty].calm ? 0.62 : 1;
+      const base = (c.panic > 0 ? (tired ? 72 : 140) : 58) * gentle;
       const spd = base * ((c.type && c.type.spd) || 1);
       c.vx += (ax * spd - c.vx) * Math.min(1, dt * 4);
       c.vy += (ay * spd - c.vy) * Math.min(1, dt * 4);
@@ -1467,7 +1493,8 @@
     if (m > combo.mult) {
       combo.mult = m;
       audio.combo(m);
-      if (m >= 4) showToast("🔥 ON FIRE — ×" + m + " COMBO!", "#ff8a3d");
+      if (player) addFloater(player.head.x, player.head.y - player.radius - 10, "×" + m + "!", m >= 4 ? "#ff8a3d" : "#ffd75e", true);
+      if (m >= 4) { showToast("🔥 ON FIRE — ×" + m + " COMBO!", "#ff8a3d"); addShake(5); }
     }
     if (combo.count > combo.best) combo.best = combo.count;
   }
@@ -1485,6 +1512,37 @@
     el("combo-label").textContent = combo.count + " COMBO";
     el("combo-fill").style.width = Math.max(0, Math.min(1, combo.timer / COMBO_WINDOW)) * 100 + "%";
   }
+
+  // ---------- Juice: floating score popups + screen shake ----------
+  // Rising "+N" numbers and a little camera kick make every catch/kill/combo
+  // feel good — the hypercasual polish kids expect (Worms Zone / Snake.io).
+  const floaters = [];
+  let lastFloat = 0;
+  function addFloater(x, y, text, color, big) {
+    floaters.push({ x, y, text, color: color || "#fff", big: !!big, life: 0.95, max: 0.95 });
+    if (floaters.length > 40) floaters.shift();
+  }
+  function updateFloaters(dt) {
+    for (let i = floaters.length - 1; i >= 0; i--) { if ((floaters[i].life -= dt) <= 0) floaters.splice(i, 1); }
+  }
+  function drawFloaters() {
+    for (const f of floaters) {
+      const p = worldToScreen(f.x, f.y);
+      const t = 1 - f.life / f.max;
+      const alpha = f.life > 0.3 ? 1 : f.life / 0.3;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = "800 " + Math.max((f.big ? 24 : 16) * cam.zoom, f.big ? 17 : 13) + "px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = f.color;
+      ctx.shadowColor = f.color; ctx.shadowBlur = 8;
+      ctx.fillText(f.text, p.x, p.y - t * 46 * cam.zoom - 20 * cam.zoom);
+      ctx.restore();
+    }
+  }
+
+  let shakeAmt = 0, shakeX = 0, shakeY = 0;
+  function addShake(a) { if (!fxLite) shakeAmt = Math.min(shakeAmt + a, 16); }
 
   // ---------- Game state ----------
   let snakes = [];
@@ -1527,6 +1585,8 @@
     critterTimer = rand(8, 16);
     resetCombo();
     el("combo-chip").classList.add("hidden");
+    floaters.length = 0;
+    shakeAmt = shakeX = shakeY = 0;
     buildStars();
 
     if (spectating) {
@@ -1734,8 +1794,8 @@
 
   function worldToScreen(x, y) {
     return {
-      x: (x - cam.x) * cam.zoom + W / 2,
-      y: (y - cam.y) * cam.zoom + H / 2
+      x: (x - cam.x) * cam.zoom + W / 2 + shakeX,
+      y: (y - cam.y) * cam.zoom + H / 2 + shakeY
     };
   }
 
@@ -2235,6 +2295,7 @@
       if (player) updateShards(dt);   // shards only tick during real play
       updateCritters(dt);
       if (player) updateCombo(dt);
+      updateFloaters(dt);
 
       // Kid Mode ('calm') has no bosses or phantom at all.
       const calm = DIFFS[difficulty].calm;
@@ -2302,6 +2363,14 @@
       updateParticles(dt);
     }
 
+    // Screen-shake kick (decays fast); only offsets world elements, not the
+    // full-screen background, so no edge gaps appear.
+    if (shakeAmt > 0.15) {
+      shakeX = (Math.random() * 2 - 1) * shakeAmt;
+      shakeY = (Math.random() * 2 - 1) * shakeAmt;
+      shakeAmt *= 0.84;
+    } else { shakeX = 0; shakeY = 0; shakeAmt = 0; }
+
     drawBackground(now);
     drawFood(now);
     drawPowerups(now);
@@ -2309,6 +2378,7 @@
     drawCritters(now);
     for (const s of snakes) if (!s.dead) { sanitizeSnake(s); drawSnake(s, now); }
     drawParticles();
+    drawFloaters();
   }
   requestAnimationFrame(frame);
 

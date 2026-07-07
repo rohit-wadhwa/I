@@ -6,6 +6,10 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.11.0
+- **Prey is easy to catch now, even without boosting** (kids reported the rabbit/bunny were impossible) — the fast prey were faster than the base-speed snake, so a non-boosting player (how kids play) could never catch them. Retuned: gentler flee speeds, prey tires faster, a bigger grab window, and **extra-gentle prey in Kid Mode**. Measured: a non-boosting player now catches a rabbit in ~2.9s / bunny ~3.2s (both were failing before), Kid Mode ~2.5s, and ~1.3s with a boost.
+- **Juicy feedback (more VFX/SFX/animation)** — floating **"+score" popups** rise from every catch/kill and combo tier-up (gold when your multiplier is live); a quick **screen shake** kicks on kills, boss arrivals, big catches and death; a soft **chirp** when prey scurries in; plus the combo tier-up chime. All screen-shake/heavy FX respect **FX: Lite** for older phones.
+
 ## 2.10.0
 - **Combo & multiplier — the "just one more" hook** — eating orbs, catching prey and killing rivals in quick succession now builds a **combo** and a rising **score multiplier (×1 → ×5)**. Let it lapse (2.6s without feeding) and it resets. A glowing HUD chip shows your multiplier + a decay bar, hitting an **🔥 ON FIRE** state at ×4. This makes the moment-to-moment loop rewarding — once you're big, you hunt combos for a massive score, so every second matters. Your **best combo** is now a death-screen stat. Stays 100% skill-based (no pay-to-win), the thing that keeps these games fair and moreish.
 
