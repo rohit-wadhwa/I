@@ -1,10 +1,17 @@
 # 🐍 Neon Serpent Arena
 
-**v1.7.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, dodge rival AI serpents, boost past them and climb the leaderboard.
+**v2.11.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, chase fleeing prey, dodge rival AI serpents, build a combo multiplier and climb the leaderboard.
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
 ![Gameplay map](docs/gameplay-map.svg)
+
+## Our goal
+
+Make a game that's genuinely **fun to play** — instantly pick-up-and-go for a kid, with enough depth to keep you chasing "one more run." Two rules guide every change:
+
+- **Skill first, no pay-to-win.** Everything is earned by playing; skins are cosmetic. The moment-to-moment loop (combos, catches, near-misses) is the reward.
+- **Polish over piling on.** This game is feature-rich, so we favour making what's there *feel great* — juice, balance, catchability, readability — over bolting on new systems. (We've removed features that fought the core skill.)
 
 ## How it's built
 
@@ -31,6 +38,8 @@ npx serve .
 | Pause  | **P**, **Esc**, or the ⏸ button (auto-pauses on tab switch) |
 | Mute   | **M**, the 🔊 button, or the menu toggle |
 | Grow   | Eat glowing orbs and the remains of fallen serpents |
+| Combo  | Eat / catch / kill in quick succession to build a **×1 → ×5 score multiplier** |
+| Hunt   | Chase the fleeing 🐀 prey and catch them for a bonus (boost helps, or wait for them to tire) |
 | Die    | Crash into another serpent's body or the electrified arena wall |
 
 Boosting is a trade-off: you move ~1.8× faster but burn mass, leaving a trail of orbs behind you that rivals can eat.
@@ -62,13 +71,22 @@ Glowing rings spawn around the arena — bots hunt them too:
 
 Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect them across runs to unlock secret skins.
 
+## Combos, prey & the late game
+
+The pieces that keep a run moreish once you've grown big:
+
+- **Combo & multiplier** (v2.10) — eating orbs, catching prey and killing rivals in quick succession builds a **combo** and a rising **score multiplier (×1 → ×5)**, shown as a glowing HUD chip with a decay bar. Let it lapse (~2.6s without feeding) and it resets. Hit **🔥 ON FIRE** at ×4. Your best combo is a death-screen stat.
+- **Running prey** (v2.9) — live critters scurry in and **flee** the nearest serpent: 🐀 rat · 🐸 frog · 🐤 chick · 🐹 hamster · 🐇 rabbit · 🦎 lizard · 🐛 grub · 🐰 bunny, plus a rare **🌟 golden rat jackpot**. Bigger/faster ones pay more. They sprint but **tire**, so a plain chase (or a boost) reels them in — extra gentle in Kid Mode. They ping the minimap.
+- **Late-game escalation** (v2.7) — as your score climbs, "heat" rises: bosses grow tougher (3 → 6 HP) and longer, bosses and the phantom spawn more often, and rivals respawn bigger. Milestone warnings fire at 5K / 10K / 20K, so dominating never gets dull.
+- **Juice** (v2.11) — floating **"+score" popups**, a **screen-shake** kick on kills / boss arrivals / big catches / death, and synthesized **snake hiss** & prey chirps — all FX respect the **FX: Lite** toggle.
+
 ## Skins, dailies & bosses (v1.3.0)
 
 - **Glossy 3D rendering** — every body segment, head and orb is a pre-rendered specular sphere sprite with soft drop shadows
 - **16-skin collection** — 6 free, 10 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges, and the Challenges ladder); locked skins show their unlock condition, and bots model the whole catalog in-game
 - **Daily challenges** — a rotating goal each day (score / kills / orbs eaten) with a progress bar on the menu; completions count toward the Galaxy skin
 - **Challenges ladder** (v2.8.0) — 12 permanent one-run goals (reach length 150/300, score 3K/10K/25K, 3/8 kills, slay 1/2 bosses, survive 3 min, reach Leviathan, 5K in Chaos), opened from the 🎯 menu button; complete 6 for the **Vanguard** skin and all 12 for **Champion** 👑
-- **Boss events** — every couple of minutes a 3-HP boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body three times to defeat it for a mass bonus and the Ember Lord skin
+- **Boss events** — every couple of minutes a boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body to defeat it for a mass bonus and the Ember Lord skin. Bosses now wear a **green-anaconda** look (mottled body, amber slit eyes, fangs) and scale from **3 to 6 HP** with your score. Every serpent also flicks a **forked tongue** and tapers to a **pointed python tail**.
 - **Crown on the leader** — the current #1 serpent wears a golden crown in the arena
 - Kill-counter chip in the HUD; "Skin unlocked" toasts
 - **Kill-opportunity cue** (v2.3.0) — a rival head about to crash into your body gets a pulsing red ring, so you can spot the moment to cut it off (only head-to-body kills; bodies crossing is harmless)
@@ -95,6 +113,8 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 - Power-up rings (overdrive, magnet, shield, feast, chameleon, soul-swap) contested by the AI
 - 6–18 AI serpents (by arena intensity) with food-seeking, wall-avoidance and body-dodging behavior
 - Boost mechanic that drains mass and drops orbs
+- Combo & score multiplier (×1 → ×5) with floating "+score" popups and screen shake
+- Running prey (a fleeing-critter bestiary) you chase and catch for bonuses
 - Head-to-head duels — the bigger serpent wins
 - Dead serpents burst into a feast of glowing orbs
 - Live leaderboard, minimap, score panel and personal-best tracking (localStorage)

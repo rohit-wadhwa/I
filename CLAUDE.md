@@ -65,16 +65,24 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
   this sandbox. Return primitives / `JSON.stringify` strings (or write to
   `document.title` and read with `page.title()`) — never a live object.
 
-## Feature map (as of v2.9.0)
+## Feature map (as of v2.11.0)
 Evolution (5 tiers) · boost (burns mass) · combo & score multiplier (×1→×5) ·
 power-ups (⚡ overdrive, 🧲 magnet, 🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) ·
 bosses (3–6 HP, scale with score, green-anaconda look) · phantom (avoid, drains) ·
-running prey (🐀 rats that flee, caught for a bonus) · Cosmic Shards + secret skins + Konami/logo-tap
-cheat · 16 skins · endless XP levels · daily challenges · 12-goal Challenges
-ladder (Vanguard/Champion reward skins) · late-game escalation (heat) ·
-synthesized hiss/SFX (Web Audio, no files) · ghost/watch mode · 4 arena intensities
-(Kids/Chill/Classic/Chaos) · pause · sound (Web Audio, no files) · sharing
-(result card, screenshot) · self-updating · Buy Me a Coffee.
+running prey (🐀🐸🐇… flee, tire, caught for a bonus; gentler in Kid Mode) ·
+juice (floating +score popups, screen shake, hiss/chirp SFX) · Cosmic Shards +
+secret skins + Konami/logo-tap cheat · 16 skins · endless XP levels · daily
+challenges · 12-goal Challenges ladder (Vanguard/Champion reward skins) ·
+late-game escalation (heat) · synthesized SFX (Web Audio, no files) · ghost/watch
+mode · 4 arena intensities (Kids/Chill/Classic/Chaos) · pause · sharing (result
+card, screenshot) · self-updating · Buy Me a Coffee.
+
+## Our goal (the point of all this)
+Make the game genuinely **enjoyable** — pick-up-and-go for a kid, deep enough for
+"one more run." Guardrails: **skill-first, no pay-to-win** (skins are cosmetic;
+the moment-to-moment loop is the reward), and **polish over piling on** (make what
+exists feel great — juice, balance, catchability, readability — before adding new
+systems). This has been a lot of careful, iterative work; keep that bar.
 
 ## Roadmap / TODO
 - **Real multiplayer** (two friends, same arena) — needs a game server
