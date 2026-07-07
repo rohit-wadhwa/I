@@ -371,11 +371,58 @@ async function startGame(page) {
   check("Vanguard skin unlocks at 6", ch.vanguard === true);
   check("Champion skin unlocks at 12", ch.champion === true);
 
+  // ---- Rank / tier ladder (v2.14.0): best-run → 6 tiers × 3 divisions ----
+  console.log("\nRank / tier ladder");
+  const rk = JSON.parse(await page.evaluate(() => {
+    const r = __ns.rankInfo;
+    const names = __ns.RANKS.map(x => x.name);
+    // Threshold boundaries land in the expected tier.
+    const bronze0 = r(0).rank.name, silverAt = r(1500).rank.name,
+      goldAt = r(5000).rank.name, masterAt = r(70000).rank.name,
+      justBelowSilver = r(1499).rank.name;
+    // Divisions run III → II → I as you climb within a tier.
+    const b0div = r(0).division, bHi = r(1400).division;   // Bronze low vs high
+    // step is strictly monotonic across the ladder.
+    const bests = [0, 500, 1500, 3000, 5000, 12000, 30000, 70000];
+    const steps = bests.map(b => r(b).step);
+    let mono = true;
+    for (let i = 1; i < steps.length; i++) if (steps[i] <= steps[i - 1]) mono = false;
+    const top = r(999999);
+    // progress is always a fraction, and a rank-up is a strict step increase.
+    const prog = r(2500).progress;
+    const rankedUp = r(5000).step > r(1400).step;
+    return JSON.stringify({
+      names, bronze0, silverAt, goldAt, masterAt, justBelowSilver,
+      b0div, bHi, mono, topIsTop: top.isTop, topNext: top.nextAt,
+      progOk: prog >= 0 && prog <= 1, rankedUp
+    });
+  }));
+  check("6 named tiers Bronze→Master", rk.names.join(",") === "Bronze,Silver,Gold,Platinum,Diamond,Master", rk.names.join(","));
+  check("best 0 is Bronze, 1500 Silver, 5000 Gold, 70000 Master",
+    rk.bronze0 === "Bronze" && rk.silverAt === "Silver" && rk.goldAt === "Gold" && rk.masterAt === "Master", JSON.stringify(rk));
+  check("just below a threshold stays in the lower tier", rk.justBelowSilver === "Bronze", rk.justBelowSilver);
+  check("divisions climb III → I within a tier", rk.b0div === "III" && rk.bHi === "I", rk.b0div + "/" + rk.bHi);
+  check("ladder step is strictly monotonic with best", rk.mono === true);
+  check("top rank (Master) is capped — no next threshold", rk.topIsTop === true && rk.topNext === null);
+  check("progress is a 0..1 fraction", rk.progOk === true);
+  check("a bigger best ranks up (strict step increase)", rk.rankedUp === true);
+  // The menu badge actually paints from prefs.best.
+  const badge = JSON.parse(await page.evaluate(() => {
+    const b = document.getElementById("rank-badge");
+    return JSON.stringify({ hasName: /Bronze|Silver|Gold|Platinum|Diamond|Master/.test(b.textContent),
+      hasFill: !!b.querySelector(".rank-fill") });
+  }));
+  check("menu rank badge renders a tier name + progress fill", badge.hasName === true && badge.hasFill === true, JSON.stringify(badge));
+
   // ---- Nagin event (v2.13.0): spawns, glides/drops orbs, blesses on contact ----
   // (Run LAST: the blessing + golden-orb feast perturb the arena, so keep it
   // clear of the size/leaderboard assertions above.)
   console.log("\nNagin event");
   const nag = JSON.parse(await page.evaluate(() => {
+    // The uncontrolled test snake may have crashed during the earlier arena
+    // churn; the blessing only fires for a LIVE player, so revive it first
+    // (keeps this section deterministic regardless of the arena's state).
+    __ns.player.dead = false;
     __ns.spawnNagin();
     const spawned = !!__ns.nagin && __ns.nagin.segs.length > 10;
     const foodsBefore = __ns.foods.length;

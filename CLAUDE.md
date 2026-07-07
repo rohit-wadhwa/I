@@ -73,7 +73,7 @@ Must be enabled once in the Vercel dashboard (Project → Analytics → Enable).
   this sandbox. Return primitives / `JSON.stringify` strings (or write to
   `document.title` and read with `page.title()`) — never a live object.
 
-## Feature map (as of v2.11.0)
+## Feature map (as of v2.14.0)
 Evolution (5 tiers) · boost (burns mass) · combo & score multiplier (×1→×5) ·
 power-ups (⚡ overdrive, 🧲 magnet, 🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) ·
 bosses (3–6 HP, scale with score, green-anaconda look) · phantom (avoid, drains) ·
@@ -82,7 +82,9 @@ running prey (🐀🐸🐇… flee, tire, caught for a bonus; gentler in Kid Mod
 juice (floating +score popups, screen shake, hiss/chirp SFX) · Cosmic Shards +
 secret skins + Konami/logo-tap cheat · 18 skins · endless XP levels · daily
 challenges · 12-goal Challenges ladder (Vanguard/Champion reward skins) ·
-late-game escalation (heat) · synthesized SFX (Web Audio, no files) · ghost/watch
+🏆 rank/tier ladder (Bronze→Master, 3 divisions each, by best run; menu badge +
+death-screen rank-up) · late-game escalation (heat) · synthesized SFX (Web Audio,
+no files) · ghost/watch
 mode · 4 arena intensities (Kids/Chill/Classic/Chaos) · pause · sharing (result
 card, screenshot) · self-updating · Buy Me a Coffee.
 
@@ -94,12 +96,10 @@ exists feel great — juice, balance, catchability, readability — before addin
 systems). This has been a lot of careful, iterative work; keep that bar.
 
 ## Roadmap / TODO (pending, most-wanted first)
-Engagement — we built loop 1 (combos); two loops remain:
-- **Rank / tier ladder** (Bronze→Silver→Gold→Platinum→Diamond→Master by best run)
-  — the run-to-run "am I climbing?" meta. Client-only, no backend. Highest-value
-  pending gameplay item.
+Engagement — we built loop 1 (combos) and loop 2 (**rank/tier ladder**, v2.14.0,
+Bronze→Master by best run); one loop remains:
 - **Daily play streak** ("Day 3 🔥" + small escalating rewards) — day-to-day habit
-  hook. Client-only, localStorage.
+  hook. Client-only, localStorage. Now the highest-value pending gameplay item.
 
 Backend (needs a small server — Supabase/Upstash free tier, all anonymous, no PII
 since kids play):

@@ -1,6 +1,6 @@
 # 🐍 Neon Serpent Arena
 
-**v2.11.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, chase fleeing prey, dodge rival AI serpents, build a combo multiplier and climb the leaderboard.
+**v2.14.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, chase fleeing prey, dodge rival AI serpents, build a combo multiplier, climb the leaderboard and rise through the rank ladder.
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 
@@ -87,6 +87,7 @@ Plus a very rare **⟡ Cosmic Shard** that drifts through the arena — collect 
 
 The pieces that keep a run moreish once you've grown big:
 
+- **🏆 Rank / tier ladder** (v2.14) — your **best run ever** places you on a persistent ladder: **Bronze → Silver → Gold → Platinum → Diamond → Master**, each split into three divisions (III → II → I). A neon rank badge on the menu shows your tier, division and a progress bar to the next step; the death screen celebrates a **RANK UP!** the moment a run promotes you. Pure skill — driven only by your best score, entirely client-side (no account, no server, no pay-to-win).
 - **Combo & multiplier** (v2.10) — eating orbs, catching prey and killing rivals in quick succession builds a **combo** and a rising **score multiplier (×1 → ×5)**, shown as a glowing HUD chip with a decay bar. Let it lapse (~2.6s without feeding) and it resets. Hit **🔥 ON FIRE** at ×4. Your best combo is a death-screen stat.
 - **Running prey** (v2.9) — live critters scurry in and **flee** the nearest serpent: 🐀 rat · 🐸 frog · 🐤 chick · 🐹 hamster · 🐇 rabbit · 🦎 lizard · 🐛 grub · 🐰 bunny, plus a rare **🌟 golden rat jackpot**. Bigger/faster ones pay more. They sprint but **tire**, so a plain chase (or a boost) reels them in — extra gentle in Kid Mode. They ping the minimap.
 - **🐍✨ Nagin event** (v2.13) — a rare, magical serpent from folklore glides through the arena to a synthesized **been / pungi** melody, trailing golden blessing-orbs. Touch it for the Nagin's blessing (fortune + overdrive) and the **Naga** skin. Public-domain mythology — no licensed brands.

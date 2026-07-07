@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.13.0";
+  const VERSION = "2.14.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -1842,8 +1842,12 @@
     nagin = null;   // don't leave a frozen Nagin drawn on the death screen
     audio.setBoost(false);
     const score = player.score;
-    const isNewBest = score > (prefs.best || 0) && score > 0;
+    const bestBefore = prefs.best || 0;
+    const rankBefore = rankInfo(bestBefore);
+    const isNewBest = score > bestBefore && score > 0;
     if (isNewBest) prefs.best = score;
+    const rankNow = rankInfo(prefs.best || 0);
+    const rankedUp = rankNow.step > rankBefore.step;   // climbed a division or tier
 
     // Lifetime stats drive skin unlocks, levels and the daily challenge.
     const lvlBefore = levelInfo().lvl;
@@ -1885,6 +1889,24 @@
     el("final-combo").textContent = combo.best >= 3 ? combo.best + "×" : "-";
     el("final-rank").textContent = bestRank === 99 ? "-" : "#" + bestRank;
     el("new-best-badge").classList.toggle("hidden", !isNewBest);
+
+    // Rank badge on the death screen + a rank-up celebration.
+    renderRank(); renderDeathRank();
+    const rub = el("rank-up-badge");
+    if (rankedUp) {
+      const fullTier = rankNow.rank.name !== rankBefore.rank.name;
+      const lbl = rankNow.rank.emblem + " RANK UP — " + rankNow.rank.name + (rankNow.division ? " " + rankNow.division : "") + "!";
+      rub.textContent = lbl;
+      rub.style.setProperty("--rank", rankNow.rank.color);
+      rub.classList.remove("hidden");
+      setTimeout(() => {
+        showToast(lbl, rankNow.rank.color);
+        audio.unlock();
+        if (fullTier) { addShake(6); }
+      }, 1500);
+    } else {
+      rub.classList.add("hidden");
+    }
 
     setTimeout(() => {
       hud.classList.add("hidden");
@@ -2914,6 +2936,7 @@
     renderDaily();
     renderLevel();
     renderWelcome();
+    renderRank();
     renderChallenges();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
@@ -3007,6 +3030,7 @@
     renderDaily();
     renderLevel();
     renderWelcome();
+    renderRank();
     renderShardChip();
     renderChallenges();
     flashBtn(e.currentTarget, "Progress cleared");
@@ -3202,6 +3226,50 @@
     el("level-fill").style.width = pct + "%";
   }
 
+  // ---------- Rank / tier ladder ----------
+  // A persistent competitive rank derived from your BEST run — the run-to-run
+  // "am I climbing?" meta. Six tiers, each with three divisions (III → II → I),
+  // Master at the top. Pure status/skill (no pay-to-win); client-only, no server.
+  const RANKS = [
+    { name: "Bronze",   color: "#cd7f32", emblem: "🥉", at: 0 },
+    { name: "Silver",   color: "#cbd5e1", emblem: "🥈", at: 1500 },
+    { name: "Gold",     color: "#ffd75e", emblem: "🥇", at: 5000 },
+    { name: "Platinum", color: "#67e8f9", emblem: "💠", at: 12000 },
+    { name: "Diamond",  color: "#93c5fd", emblem: "💎", at: 30000 },
+    { name: "Master",   color: "#ff8af0", emblem: "👑", at: 70000 }
+  ];
+  // Returns { rank, division, isTop, step (0-based, higher = better), progress
+  // (0..1 to the next step), nextAt }. `step` is the comparable ladder position.
+  function rankInfo(best) {
+    best = Math.max(0, best || 0);
+    let i = 0;
+    for (let k = 0; k < RANKS.length; k++) if (best >= RANKS[k].at) i = k;
+    const rank = RANKS[i], isTop = i === RANKS.length - 1;
+    if (isTop) return { rank, division: "", isTop, step: RANKS.length * 3, progress: 1, nextAt: null };
+    const lo = rank.at, hi = RANKS[i + 1].at, span = hi - lo;
+    const frac = (best - lo) / span;                     // 0..1 within this rank
+    const div = Math.min(2, Math.floor(frac * 3));       // 0,1,2 → III,II,I
+    const divLo = lo + span * (div / 3), divHi = lo + span * ((div + 1) / 3);
+    return {
+      rank, division: ["III", "II", "I"][div], isTop, step: i * 3 + div,
+      progress: clamp((best - divLo) / (divHi - divLo), 0, 1), nextAt: Math.ceil(divHi)
+    };
+  }
+  function paintRank(badge) {
+    if (!badge) return;
+    const ri = rankInfo(prefs.best || 0);
+    const label = ri.rank.name + (ri.division ? " " + ri.division : "");
+    const next = ri.isTop ? "MAX RANK" : "→ " + ri.nextAt.toLocaleString();
+    badge.style.setProperty("--rank", ri.rank.color);
+    badge.innerHTML =
+      '<span class="rank-emblem">' + ri.rank.emblem + '</span>' +
+      '<div class="rank-body"><div class="rank-name">' + label + '</div>' +
+      '<div class="rank-bar"><div class="rank-fill" style="width:' + Math.round(ri.progress * 100) + '%"></div></div></div>' +
+      '<span class="rank-next">' + next + '</span>';
+  }
+  function renderRank() { paintRank(el("rank-badge")); }
+  function renderDeathRank() { paintRank(el("death-rank")); }
+
   function renderDiffSeg() {
     document.querySelectorAll("#difficulty-seg button").forEach(b => {
       b.classList.toggle("on", +b.dataset.d === difficulty);
@@ -3233,6 +3301,7 @@
     renderDaily();
     renderLevel();
     renderWelcome();
+    renderRank();
     renderChallenges();
     menu.classList.remove("hidden");
     maybeShowUpdatePill();
@@ -3246,6 +3315,7 @@
   renderDaily();
   renderLevel();
   renderWelcome();
+  renderRank();
   renderDiffSeg();
   renderShardChip();
   renderChallenges();
@@ -3297,7 +3367,9 @@
     unlocked,
     CHALLENGES,
     challengesDone,
-    checkChallenges
+    checkChallenges,
+    rankInfo,
+    RANKS
   };
 
   // Drive the idle scene from the same rAF loop.

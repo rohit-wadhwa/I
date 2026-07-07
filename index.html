@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=2.13.0" />
+  <link rel="stylesheet" href="css/style.css?v=2.14.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -61,6 +61,8 @@
       <h1 class="logo">NEON<span>SERPENT</span></h1>
       <p class="tagline">Eat orbs. Dodge rivals. Rule the arena.</p>
       <p id="welcome" class="welcome"></p>
+
+      <div id="rank-badge" class="rank-badge"></div>
 
       <input id="nickname" type="text" maxlength="14" placeholder="Your serpent's name" autocomplete="off" />
 
@@ -184,6 +186,7 @@
         <li><b>Mythic surprises</b> — a rare 🐍 Nagin glides through to a synthesized been melody and blesses you; skins drawn from snake folklore (Naga, Rainbow Serpent) — original, no licensed brands.</li>
         <li><b>Hidden depth</b> — Cosmic Shards, secret skins and a code or two for the curious.</li>
         <li><b>Goals to chase</b> — a 12-step Challenges ladder and daily challenges, with reward skins for the dedicated.</li>
+        <li><b>🏆 Rank ladder</b> — climb Bronze → Master (three divisions each) on your best run; a rank badge on the menu and a RANK UP! moment on the death screen. Skill only, no pay-to-win.</li>
         <li><b>Endless progression</b> — lifetime XP with uncapped levels; every run counts forever.</li>
         <li><b>Player-first controls</b> — pause, four arena intensities (incl. a gentle Kid Mode), sound &amp; FX toggles.</li>
         <li><b>Static &amp; private</b> — no game servers, no ads, no accounts, no downloads; just privacy-friendly, cookieless, <em>anonymous</em> visit counts (Vercel) so we know people are playing. Your scores stay on your device.</li>
@@ -210,6 +213,8 @@
     <div class="menu-card">
       <h2 class="death-title">SHORT-CIRCUITED</h2>
       <div id="new-best-badge" class="hidden">★ NEW PERSONAL BEST — flex on your friends!</div>
+      <div id="rank-up-badge" class="hidden"></div>
+      <div id="death-rank" class="rank-badge"></div>
       <p id="death-cause" class="tagline"></p>
       <div class="stats-grid">
         <div class="stat"><div class="hud-label">Final score</div><div id="final-score" class="stat-num">0</div></div>
@@ -240,7 +245,7 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=2.13.0"></script>
+  <script src="js/game.js?v=2.14.0"></script>
 
   <!-- Vercel Web Analytics — privacy-friendly, cookieless, anonymous visit
        counts so we can see people are playing. Loaded ONLY on the live https

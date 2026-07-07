@@ -870,6 +870,62 @@ body.touch #boost-hint { display: none; }
 
 @keyframes nb-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 
+/* ---------- Rank / tier ladder badge ---------- */
+.rank-badge {
+  --rank: #cd7f32;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 300px;
+  margin: 12px auto 0;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(13, 19, 48, 0.7);
+  border: 1px solid color-mix(in srgb, var(--rank) 55%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--rank) 25%, transparent);
+}
+.rank-badge:empty { display: none; }
+.rank-badge .rank-emblem { font-size: 22px; line-height: 1; flex: none; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--rank) 60%, transparent)); }
+.rank-badge .rank-body { flex: 1; min-width: 0; text-align: left; }
+.rank-badge .rank-name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--rank);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rank) 45%, transparent);
+}
+.rank-badge .rank-bar {
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.rank-badge .rank-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--rank);
+  box-shadow: 0 0 8px var(--rank);
+  transition: width 0.4s ease;
+}
+.rank-badge .rank-next { font-size: 11px; font-weight: 700; color: var(--muted); flex: none; white-space: nowrap; }
+
+#rank-up-badge {
+  --rank: #ffd75e;
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #12100a;
+  background: var(--rank);
+  border-radius: 999px;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--rank) 60%, transparent);
+  animation: nb-pulse 1.3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) { #rank-up-badge { animation: none; } }
+
 #hud-version {
   position: absolute;
   bottom: 5px;
