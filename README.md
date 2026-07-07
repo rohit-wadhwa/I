@@ -89,13 +89,14 @@ The pieces that keep a run moreish once you've grown big:
 
 - **Combo & multiplier** (v2.10) — eating orbs, catching prey and killing rivals in quick succession builds a **combo** and a rising **score multiplier (×1 → ×5)**, shown as a glowing HUD chip with a decay bar. Let it lapse (~2.6s without feeding) and it resets. Hit **🔥 ON FIRE** at ×4. Your best combo is a death-screen stat.
 - **Running prey** (v2.9) — live critters scurry in and **flee** the nearest serpent: 🐀 rat · 🐸 frog · 🐤 chick · 🐹 hamster · 🐇 rabbit · 🦎 lizard · 🐛 grub · 🐰 bunny, plus a rare **🌟 golden rat jackpot**. Bigger/faster ones pay more. They sprint but **tire**, so a plain chase (or a boost) reels them in — extra gentle in Kid Mode. They ping the minimap.
+- **🐍✨ Nagin event** (v2.13) — a rare, magical serpent from folklore glides through the arena to a synthesized **been / pungi** melody, trailing golden blessing-orbs. Touch it for the Nagin's blessing (fortune + overdrive) and the **Naga** skin. Public-domain mythology — no licensed brands.
 - **Late-game escalation** (v2.7) — as your score climbs, "heat" rises: bosses grow tougher (3 → 6 HP) and longer, bosses and the phantom spawn more often, and rivals respawn bigger. Milestone warnings fire at 5K / 10K / 20K, so dominating never gets dull.
 - **Juice** (v2.11) — floating **"+score" popups**, a **screen-shake** kick on kills / boss arrivals / big catches / death, and synthesized **snake hiss** & prey chirps — all FX respect the **FX: Lite** toggle.
 
 ## Skins, dailies & bosses (v1.3.0)
 
 - **Glossy 3D rendering** — every body segment, head and orb is a pre-rendered specular sphere sprite with soft drop shadows
-- **16-skin collection** — 6 free, 10 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges, and the Challenges ladder); locked skins show their unlock condition, and bots model the whole catalog in-game
+- **18-skin collection** — 6 free, 12 unlockable through achievements (total score, kills, games played, single-run score, reaching Leviathan, boss kills, daily challenges, the Challenges ladder, and the Nagin's blessing); locked skins show their unlock condition, and bots model the whole catalog in-game
 - **Daily challenges** — a rotating goal each day (score / kills / orbs eaten) with a progress bar on the menu; completions count toward the Galaxy skin
 - **Challenges ladder** (v2.8.0) — 12 permanent one-run goals (reach length 150/300, score 3K/10K/25K, 3/8 kills, slay 1/2 bosses, survive 3 min, reach Leviathan, 5K in Chaos), opened from the 🎯 menu button; complete 6 for the **Vanguard** skin and all 12 for **Champion** 👑
 - **Boss events** — every couple of minutes a boss serpent (Omega Serpent, Void Wyrm, Inferno Naga, Storm Basilisk) invades and hunts you; trick it into your body to defeat it for a mass bonus and the Ember Lord skin. Bosses now wear a **green-anaconda** look (mottled body, amber slit eyes, fangs) and scale from **3 to 6 HP** with your score. Every serpent also flicks a **forked tongue** and tapers to a **pointed python tail**.

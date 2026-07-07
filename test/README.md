@@ -30,7 +30,8 @@ when present, otherwise Playwright's own download.
 | Check | Guards |
 |---|---|
 | `check-version.js` | The **#1 convention**: `VERSION` in game.js, `version.json`, and both `?v=` queries in index.html must agree — or the self-updater breaks. |
-| Menu / skins / version label | Menu renders, 16 skins, version shown on menu footer + HUD. |
+| Menu / skins / version label | Menu renders, 18 skins, version shown on menu footer + HUD. |
+| Nagin event + sound | The Nagin spawns, trails golden orbs, blesses on contact (+1500, overdrive, growth) and unlocks Naga; its shimmer keeps the sprite cache bounded; and a smoke test fires every synthesized SFX (incl. the been) without error. |
 | Challenges ladder | A run's result marks matching goals done (idempotent); 6 → Vanguard skin, 12 → Champion. |
 | Running prey (rat) | A critter spawns, flees the nearby serpent, and on contact is caught for +400 score / +12 length. Fastest prey is catchable by a boost-speed pursuer (<8s). |
 | Combo & multiplier | Multiplier climbs ×2→×5 with the combo, caps at ×5, lapses to ×1; eating applies the multiplier to score. |

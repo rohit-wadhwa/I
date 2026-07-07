@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.12.3";
+  const VERSION = "2.13.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -60,6 +60,11 @@
       unlock: { desc: "Complete 6 challenges", test: s => s.challengesDone >= 6 } },
     { key: "champion",  name: "Champion",     colors: [[45, 95, 60], [280, 80, 60], [190, 85, 62]], rainbow: true,
       unlock: { desc: "Complete every challenge", test: s => s.challengesDone >= 12 } },
+    // Mythic serpents — folklore themed (public domain).
+    { key: "naga",      name: "Naga",         colors: [[275, 70, 55], [45, 90, 60], [200, 80, 62]],
+      unlock: { desc: "Receive the Nagin's blessing", test: s => (s.naginBlessed || 0) >= 1 } },
+    { key: "rainbowserpent", name: "Rainbow Serpent", colors: [[0, 90, 62]], rainbow: true,
+      unlock: { desc: "Score 15,000 in one run", test: s => s.bestRun >= 15000 } },
     // Secret skins — hidden from the picker until earned. No auto-test;
     // granted explicitly by shards or the cheat code.
     { key: "stardust", name: "Stardust",     colors: [[260, 60, 70], [200, 70, 78], [320, 60, 72]],
@@ -224,7 +229,7 @@
   }
   const prefs = loadPrefs();
   const stats = Object.assign(
-    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0, shards: 0, challengesDone: 0 },
+    { totalScore: 0, totalKills: 0, games: 0, bossKills: 0, dailies: 0, maxTier: 0, bestRun: 0, shards: 0, challengesDone: 0, naginBlessed: 0 },
     prefs.stats
   );
   prefs.stats = stats;
@@ -466,6 +471,44 @@
     chirp() {
       this.tone(1400, 0.05, { type: "sine", vol: 0.06, slide: 200 });
       this.tone(1750, 0.05, { type: "sine", vol: 0.05, delay: 0.07, slide: 200 });
+    },
+    // Been / pungi — the snake-charmer's flute. An ORIGINAL hypnotic phrase in a
+    // phrygian-dominant scale (no copied tune): a droning reed, a reedy lead that
+    // glides between notes with vibrato, and a soft damru pulse underneath.
+    // All synthesized — still zero audio files.
+    been() {
+      if (!this.ctx || this.muted) return;
+      const ctx = this.ctx, t0 = ctx.currentTime, DUR = 4.4;
+      // Drone (constant reed)
+      const drone = ctx.createOscillator(); drone.type = "sawtooth"; drone.frequency.value = 146.83; // D3
+      const dlp = ctx.createBiquadFilter(); dlp.type = "lowpass"; dlp.frequency.value = 680;
+      const dg = ctx.createGain(); dg.gain.value = 0.0001;
+      drone.connect(dlp); dlp.connect(dg); dg.connect(this.master);
+      dg.gain.exponentialRampToValueAtTime(0.045, t0 + 0.35);
+      dg.gain.setValueAtTime(0.045, t0 + DUR - 0.5);
+      dg.gain.exponentialRampToValueAtTime(0.0001, t0 + DUR);
+      drone.start(t0); drone.stop(t0 + DUR + 0.05);
+      // Reedy lead with vibrato + portamento glides
+      const lead = ctx.createOscillator(); lead.type = "sawtooth";
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1300; bp.Q.value = 5;
+      const lg = ctx.createGain(); lg.gain.value = 0.0001;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 6.2;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = 7;   // ±7 Hz vibrato
+      lfo.connect(lfoGain); lfoGain.connect(lead.frequency);
+      lead.connect(bp); bp.connect(lg); lg.connect(this.master);
+      const D = 293.66, Eb = 311.13, Fs = 369.99, G = 392.0, A = 440.0;
+      const seq = [[D, 0.34], [Eb, 0.28], [D, 0.28], [Fs, 0.4], [G, 0.28], [Fs, 0.28],
+                   [A, 0.5], [G, 0.28], [Fs, 0.28], [Eb, 0.34], [D, 0.56]];
+      lead.frequency.setValueAtTime(seq[0][0], t0);
+      lg.gain.exponentialRampToValueAtTime(0.085, t0 + 0.15);
+      let t = t0;
+      for (const [f, d] of seq) { lead.frequency.setTargetAtTime(f, t, 0.05); t += d; }
+      lg.gain.setValueAtTime(0.085, t - 0.4);
+      lg.gain.exponentialRampToValueAtTime(0.0001, t);
+      lead.start(t0); lead.stop(t + 0.1);
+      lfo.start(t0); lfo.stop(t + 0.1);
+      // Soft damru pulse
+      for (let i = 0; i * 0.44 < DUR - 0.3; i++) this.thump(120, 0.11, { vol: 0.11, delay: i * 0.44 });
     },
 
     eat() {
@@ -1506,6 +1549,122 @@
     }
   }
 
+  // ---------- 🐍 Nagin (mythic event) ----------
+  // A rare, magical serpent from folklore that glides through the arena to a
+  // hypnotic been (pungi) melody, trailing golden blessing-orbs. Harmless — a
+  // surprise spectacle for kids. Touch it for the Nagin's blessing (fortune +
+  // overdrive) and, once, the Naga skin. Public-domain mythology, no brands.
+  const NAGIN_SP = 7, NAGIN_LEN = 42;
+  let nagin = null;
+  let naginTimer = rand(55, 95);
+
+  function spawnNagin() {
+    const a = rand(0, Math.PI * 2), R = WORLD_R * 0.92;
+    const hx = Math.cos(a) * R, hy = Math.sin(a) * R;
+    const dir = Math.atan2(-hy, -hx) + rand(-0.5, 0.5);
+    const segs = [];
+    for (let i = 0; i < NAGIN_LEN; i++) segs.push({ x: hx - Math.cos(dir) * i * NAGIN_SP, y: hy - Math.sin(dir) * i * NAGIN_SP });
+    nagin = { segs, dir, phase: rand(0, 6.28), life: 15, drop: 0, blessed: false };
+    showToast("🐍✨ A NAGIN GLIDES THROUGH THE ARENA…", "#c9a8ff");
+    audio.been();
+    addShake(3);
+  }
+  function blessNagin() {
+    if (!nagin || nagin.blessed || !player || player.dead) return;
+    nagin.blessed = true;
+    nagin.life = Math.min(nagin.life, 2.2);
+    player.fx.overdrive = Math.max(player.fx.overdrive, 6);
+    player.scorePoints += 1500;
+    growSnake(player, 25);
+    stats.naginBlessed = (stats.naginBlessed || 0) + 1;
+    savePrefs(prefs);
+    checkUnlocks();
+    spawnBurst(player.head.x, player.head.y, 285);
+    addFloater(player.head.x, player.head.y - player.radius - 10, "🐍 BLESSED +1500", "#c9a8ff", true);
+    addShake(6);
+    showToast("🐍✨ THE NAGIN BLESSES YOU — fortune & overdrive!", "#c9a8ff");
+    audio.bossDown();   // a short celebratory flourish (not a 2nd overlapping been)
+    audio.hiss(0.1);
+  }
+  function updateNagin(dt) {
+    if (nagin) {
+      const n = nagin, h = n.segs[0];
+      n.life -= dt;
+      n.phase += dt * 2.4;
+      n.dir += Math.sin(n.phase) * 1.1 * dt;                 // hypnotic sine glide
+      if (Math.hypot(h.x, h.y) > WORLD_R - 220)              // curve back from the wall
+        n.dir += angleTo(n.dir, Math.atan2(-h.y, -h.x)) * dt * 2.2;
+      const spd = 155;
+      h.x += Math.cos(n.dir) * spd * dt;
+      h.y += Math.sin(n.dir) * spd * dt;
+      for (let i = 1; i < n.segs.length; i++) {
+        const a = n.segs[i - 1], b = n.segs[i];
+        const dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy) || 1;
+        if (d > NAGIN_SP) { const k = (d - NAGIN_SP) / d; b.x += dx * k; b.y += dy * k; }
+      }
+      n.drop -= dt;
+      if (n.drop <= 0) { n.drop = 0.45; const tl = n.segs[n.segs.length - 1]; spawnDropFood(tl.x + rand(-16, 16), tl.y + rand(-16, 16), 2.2, 45, true); }
+      if (!n.blessed && player && !player.dead && dist2(h.x, h.y, player.head.x, player.head.y) < 95 * 95) blessNagin();
+      if (n.life <= 0) { spawnBurst(h.x, h.y, 285); nagin = null; }
+    } else if (running && player && !player.dead) {   // real play only — not spectate/ghost
+      naginTimer -= dt;
+      if (naginTimer <= 0) { spawnNagin(); naginTimer = rand(75, 130); }
+    }
+  }
+  function drawNagin(time) {
+    if (!nagin) return;
+    const n = nagin, r = 15 * cam.zoom;
+    for (let i = n.segs.length - 1; i >= 0; i--) {   // iridescent body, tail-first
+      const p = worldToScreen(n.segs[i].x, n.segs[i].y);
+      if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;
+      const hue = Math.round((time * 0.09 + i * 9) % 360);   // quantise: keep the sprite cache bounded
+      const segR = r * (1 - (i / n.segs.length) * 0.55);
+      ctx.drawImage(getSphereSprite(hue, 92, 64), p.x - segR, p.y - segR, segR * 2, segR * 2);
+    }
+    const hp = worldToScreen(n.segs[0].x, n.segs[0].y);
+    if (hp.x < -80 || hp.x > W + 80 || hp.y < -80 || hp.y > H + 80) return;
+    const dir = n.dir, perp = dir + Math.PI / 2;
+    ctx.save();
+    const aura = ctx.createRadialGradient(hp.x, hp.y, r, hp.x, hp.y, r * 4);   // mystical aura
+    aura.addColorStop(0, "rgba(201, 168, 255, 0.35)");
+    aura.addColorStop(1, "rgba(201, 168, 255, 0)");
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(hp.x, hp.y, r * 4, 0, Math.PI * 2); ctx.fill();
+    // cobra hood — a flared fan behind the head
+    ctx.fillStyle = "rgba(180, 120, 255, 0.85)";
+    ctx.strokeStyle = "rgba(255, 220, 120, 0.9)"; ctx.lineWidth = 2;
+    const back = dir + Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(hp.x + Math.cos(perp) * r * 2.2, hp.y + Math.sin(perp) * r * 2.2);
+    ctx.quadraticCurveTo(hp.x + Math.cos(back) * r * 2.6, hp.y + Math.sin(back) * r * 2.6,
+                         hp.x - Math.cos(perp) * r * 2.2, hp.y - Math.sin(perp) * r * 2.2);
+    ctx.quadraticCurveTo(hp.x + Math.cos(dir) * r * 1.2, hp.y + Math.sin(dir) * r * 1.2,
+                         hp.x + Math.cos(perp) * r * 2.2, hp.y + Math.sin(perp) * r * 2.2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.shadowColor = "rgba(201, 168, 255, 0.9)"; ctx.shadowBlur = 18;   // head
+    ctx.drawImage(getSphereSprite(Math.round((time * 0.09) % 360), 92, 66), hp.x - r * 1.1, hp.y - r * 1.1, r * 2.2, r * 2.2);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffd75e";   // jewel / bindi
+    ctx.beginPath(); ctx.arc(hp.x + Math.cos(dir) * r * 0.4, hp.y + Math.sin(dir) * r * 0.4, r * 0.28, 0, Math.PI * 2); ctx.fill();
+    const eo = r * 0.5;   // eyes
+    for (const side of [-1, 1]) {
+      const ex = hp.x + Math.cos(dir) * eo * 0.7 + Math.cos(perp) * eo * side;
+      const ey = hp.y + Math.sin(dir) * eo * 0.7 + Math.sin(perp) * eo * side;
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, r * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#3a1f6b"; ctx.beginPath(); ctx.arc(ex, ey, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    }
+    if (Math.sin(time * 0.02) > 0.3) {   // flicking tongue
+      ctx.strokeStyle = "#ff2d55"; ctx.lineWidth = Math.max(r * 0.14, 1.5); ctx.lineCap = "round";
+      const bx = hp.x + Math.cos(dir) * r * 1.1, by = hp.y + Math.sin(dir) * r * 1.1;
+      const tx = bx + Math.cos(dir) * r, ty = by + Math.sin(dir) * r;
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(tx, ty);
+      ctx.moveTo(tx, ty); ctx.lineTo(tx + Math.cos(dir - 0.5) * r * 0.5, ty + Math.sin(dir - 0.5) * r * 0.5);
+      ctx.moveTo(tx, ty); ctx.lineTo(tx + Math.cos(dir + 0.5) * r * 0.5, ty + Math.sin(dir + 0.5) * r * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // ---------- Combo & multiplier ----------
   // The moment-to-moment greed loop: eating, catching prey and killing rivals
   // in quick succession builds a combo and a score multiplier (×1 → ×5). Stop
@@ -1611,6 +1770,8 @@
     shardTimer = spectating ? 30 : 45;
     critters.length = 0;
     critterTimer = rand(8, 16);
+    nagin = null;
+    naginTimer = rand(55, 95);
     resetCombo();
     el("combo-chip").classList.add("hidden");
     floaters.length = 0;
@@ -1678,6 +1839,7 @@
 
   function onPlayerDeath(cause) {
     running = false;
+    nagin = null;   // don't leave a frozen Nagin drawn on the death screen
     audio.setBoost(false);
     const score = player.score;
     const isNewBest = score > (prefs.best || 0) && score > 0;
@@ -2366,6 +2528,7 @@
       updatePowerups(dt);
       if (player) updateShards(dt);   // shards only tick during real play
       updateCritters(dt);
+      updateNagin(dt);
       if (player) updateCombo(dt);
       updateFloaters(dt);
 
@@ -2448,6 +2611,7 @@
     drawPowerups(now);
     drawShards(now);
     drawCritters(now);
+    drawNagin(now);
     for (const s of snakes) if (!s.dead) { sanitizeSnake(s); drawSnake(s, now); }
     drawParticles();
     drawFloaters();
@@ -2741,6 +2905,7 @@
   function exitToMenu() {
     running = false;
     spectating = false;
+    nagin = null;
     audio.setBoost(false);
     hud.classList.add("hidden");
     hud.classList.remove("spectate");
@@ -3113,6 +3278,12 @@
     spawnShard,
     spawnCritter,
     updateCritters,
+    get nagin() { return nagin; },
+    spawnNagin,
+    updateNagin,
+    blessNagin,
+    audio,
+    get spriteCacheSize() { return spriteCache.size; },
     killCueIntensity,
     growSnake,
     shrinkSnake,

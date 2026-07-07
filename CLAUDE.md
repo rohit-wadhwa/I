@@ -62,9 +62,11 @@ Must be enabled once in the Vercel dashboard (Project → Analytics → Enable).
     preview / a standalone sanity check).
 - It uses the preinstalled Chromium at `/opt/pw-browsers/chromium` when present.
 - `window.__ns` exposes test hooks: `player, snakes, boss, phantom, foods, shards,
-  critters, spawnBoss, spawnPhantom, spawnShard, spawnCritter, updateCritters,
-  applyPowerup, spawnDropFood, killCueIntensity, combo, bumpCombo, comboMult,
-  updateCombo, stats, unlocked, CHALLENGES, challengesDone, checkChallenges`.
+  critters, nagin, spawnBoss, spawnPhantom, spawnShard, spawnCritter,
+  updateCritters, spawnNagin, updateNagin, blessNagin, applyPowerup,
+  spawnDropFood, growSnake, shrinkSnake, snakeMass, reformSnake, killCueIntensity,
+  combo, bumpCombo, comboMult, updateCombo, audio, stats, unlocked, CHALLENGES,
+  challengesDone, checkChallenges`.
   Note `player.score` is a getter — set `player.scorePoints` to fake a score.
 - Known harness quirk: Playwright's `page.evaluate` sometimes throws
   "Right-hand side of 'instanceof' is not an object" when RETURNING objects in
@@ -76,8 +78,9 @@ Evolution (5 tiers) · boost (burns mass) · combo & score multiplier (×1→×5
 power-ups (⚡ overdrive, 🧲 magnet, 🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) ·
 bosses (3–6 HP, scale with score, green-anaconda look) · phantom (avoid, drains) ·
 running prey (🐀🐸🐇… flee, tire, caught for a bonus; gentler in Kid Mode) ·
+🐍 Nagin mythic event (been/pungi SFX, golden trail, blessing → Naga skin) ·
 juice (floating +score popups, screen shake, hiss/chirp SFX) · Cosmic Shards +
-secret skins + Konami/logo-tap cheat · 16 skins · endless XP levels · daily
+secret skins + Konami/logo-tap cheat · 18 skins · endless XP levels · daily
 challenges · 12-goal Challenges ladder (Vanguard/Champion reward skins) ·
 late-game escalation (heat) · synthesized SFX (Web Audio, no files) · ghost/watch
 mode · 4 arena intensities (Kids/Chill/Classic/Chaos) · pause · sharing (result

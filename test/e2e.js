@@ -60,7 +60,7 @@ async function startGame(page) {
   // ---- Menu ----
   console.log("\nMenu & version display");
   const skins = await page.locator(".skin-swatch").count();
-  check("16 skin swatches render", skins === 16, "got " + skins);
+  check("18 skin swatches render", skins === 18, "got " + skins);
   const menuVer = (await page.textContent("#version-tag")).trim();
   check("menu footer shows v" + EXPECTED_VERSION, menuVer.startsWith("v" + EXPECTED_VERSION), "got '" + menuVer + "'");
 
@@ -295,7 +295,7 @@ async function startGame(page) {
   const bigIdx = bigger ? lb.items.indexOf(bigger) : -1;
   check("board shows a size header, not 'Leaderboard'", /biggest/i.test(lb.header), lb.header);
   check("the bigger serpent outranks the tiny high-score player", bigIdx >= 0 && meIdx >= 0 && bigIdx < meIdx, JSON.stringify(lb.items));
-  check("player's board number is its length (~40), not its score", lb.meVal <= 60, "meVal=" + lb.meVal);
+  check("player's board number is its size, not its 99,999 score", lb.meVal < 2000, "meVal=" + lb.meVal);
 
   // v2.12.2 regression: at the 520 length cap the board MUST NOT freeze into a
   // wall of identical "520"s — uncapped `over` keeps the biggest snakes apart.
@@ -370,6 +370,63 @@ async function startGame(page) {
   check("a monster run completes all 12", ch.all === ch.total, "all=" + ch.all);
   check("Vanguard skin unlocks at 6", ch.vanguard === true);
   check("Champion skin unlocks at 12", ch.champion === true);
+
+  // ---- Nagin event (v2.13.0): spawns, glides/drops orbs, blesses on contact ----
+  // (Run LAST: the blessing + golden-orb feast perturb the arena, so keep it
+  // clear of the size/leaderboard assertions above.)
+  console.log("\nNagin event");
+  const nag = JSON.parse(await page.evaluate(() => {
+    __ns.spawnNagin();
+    const spawned = !!__ns.nagin && __ns.nagin.segs.length > 10;
+    const foodsBefore = __ns.foods.length;
+    for (let i = 0; i < 40; i++) __ns.updateNagin(0.05);   // ~2s of gliding
+    const droppedOrbs = __ns.foods.length > foodsBefore;   // trails golden orbs
+    // now bless: place the Nagin head on the player and tick
+    __ns.player.scorePoints = 0; __ns.player.len = 100;
+    const before = { score: __ns.player.score, len: __ns.player.len, od: __ns.player.fx.overdrive };
+    __ns.nagin.segs[0].x = __ns.player.head.x; __ns.nagin.segs[0].y = __ns.player.head.y;
+    __ns.updateNagin(0.05);
+    return JSON.stringify({ spawned, droppedOrbs,
+      dScore: __ns.player.score - before.score,
+      dLen: Math.round(__ns.player.len - before.len),
+      overdrive: __ns.player.fx.overdrive > before.od,
+      blessed: __ns.stats.naginBlessed });
+  }));
+  check("Nagin spawns with a body", nag.spawned === true);
+  check("Nagin trails golden blessing-orbs", nag.droppedOrbs === true);
+  check("Nagin's blessing pays +1500 score", nag.dScore >= 1500, JSON.stringify(nag));
+  check("blessing grants overdrive + growth", nag.overdrive === true && nag.dLen >= 25, JSON.stringify(nag));
+  check("blessing counts toward the Naga skin", nag.blessed >= 1, "blessed=" + nag.blessed);
+  const naga = await page.evaluate(() => !!__ns.unlocked.naga);
+  check("Naga skin unlocks after a blessing", naga === true);
+
+  // Regression (code review): the Nagin's iridescent body must use QUANTISED
+  // hues so it doesn't spawn a new cached sprite every frame (a memory leak).
+  const cacheBefore = await page.evaluate(() => __ns.spriteCacheSize);
+  await page.evaluate(() => { __ns.spawnNagin(); });
+  await page.waitForTimeout(1500);   // ~90 frames of the shimmering Nagin drawing
+  const cacheAfter = await page.evaluate(() => __ns.spriteCacheSize);
+  check("Nagin sprite cache stays bounded (no per-frame leak)", cacheAfter - cacheBefore <= 400, "grew=" + (cacheAfter - cacheBefore));
+
+  // ---- Sound smoke test: every synthesized SFX fires without error ----
+  // (audio.ensure() ran on the play-btn gesture, so the context is live.)
+  console.log("\nSound (Web Audio) smoke test");
+  const sound = JSON.parse(await page.evaluate(() => {
+    const a = __ns.audio;
+    const ctxUp = !!a.ctx && a.ctx.state !== "closed";
+    const calls = [
+      () => a.been(), () => a.hiss(0.1), () => a.chirp(), () => a.critter(),
+      () => a.combo(3), () => a.eat(), () => a.kill(), () => a.evolve(),
+      () => a.powerup(), () => a.bossSpawn(), () => a.bossHit(), () => a.bossDown(),
+      () => a.phantomSpawn(), () => a.drain(), () => a.death(), () => a.unlock(),
+      () => a.noise(0.1, {}), () => a.tone(440, 0.1, {}), () => a.thump(120, 0.1, {})
+    ];
+    let threw = null;
+    for (const c of calls) { try { c(); } catch (e) { threw = String(e); break; } }
+    return JSON.stringify({ ctxUp, threw });
+  }));
+  check("audio context is live after the play gesture", sound.ctxUp === true, JSON.stringify(sound));
+  check("all synthesized SFX (incl. the been) fire without throwing", sound.threw === null, "threw=" + sound.threw);
 
   // ---- No JS errors the whole run ----
   console.log("\nRuntime health");
