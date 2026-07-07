@@ -16,7 +16,7 @@ Make a game that's genuinely **fun to play** — instantly pick-up-and-go for a 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/shot-menu.png" width="49%" alt="Menu — 16-skin collection, level, arena intensity and daily challenge" />
+  <img src="docs/shot-menu.png" width="49%" alt="Menu — skin collection, level, arena intensity and daily challenge" />
   <img src="docs/shot-gameplay.png" width="49%" alt="Gameplay — ×3 combo multiplier, running prey (rabbit, frog, golden rat) and Titan evolution" />
 </p>
 <p align="center">
