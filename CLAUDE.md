@@ -4,6 +4,12 @@ A slither.io-style browser game, **100% vanilla HTML/CSS/JS**, no frameworks, no
 build step, no backend. Deploys as static files (Vercel).
 Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
 
+Analytics: the ONLY external request is Vercel Web Analytics (privacy-friendly,
+cookieless, anonymous), injected in `index.html` **only** on the live https host
+— never on file://, localhost, or the standalone bundle, so offline play and the
+shareable build stay self-contained. No score/PII collection (kids play this).
+Must be enabled once in the Vercel dashboard (Project → Analytics → Enable).
+
 ## Files
 - `index.html` — markup: `<canvas>`, HUD, and all overlays (menu, tutorial, about, death, pause)
 - `css/style.css` — neon theme; tablet tier under `@media (pointer:coarse) and (min-width:640px)`

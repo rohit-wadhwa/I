@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.12.0
+- **Anonymous "people are playing" analytics** — added **Vercel Web Analytics** (privacy-friendly, cookieless, anonymous visit counts) so we can finally see how many people play. It loads **only on the live https site** — never on `file://`, `localhost`, or the standalone shareable bundle — so offline play stays 100% self-contained with zero external requests. No scores or personal data are collected (kids play this); your scores still live only on your device. *Enable it once in the Vercel dashboard: Project → Analytics → Enable.*
+
 ## 2.11.0
 - **Prey is easy to catch now, even without boosting** (kids reported the rabbit/bunny were impossible) — the fast prey were faster than the base-speed snake, so a non-boosting player (how kids play) could never catch them. Retuned: gentler flee speeds, prey tires faster, a bigger grab window, and **extra-gentle prey in Kid Mode**. Measured: a non-boosting player now catches a rabbit in ~2.9s / bunny ~3.2s (both were failing before), Kid Mode ~2.5s, and ~1.3s with a boost.
 - **Juicy feedback (more VFX/SFX/animation)** — floating **"+score" popups** rise from every catch/kill and combo tier-up (gold when your multiplier is live); a quick **screen shake** kicks on kills, boss arrivals, big catches and death; a soft **chirp** when prey scurries in; plus the combo tier-up chime. All screen-shake/heavy FX respect **FX: Lite** for older phones.

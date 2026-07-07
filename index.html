@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Free browser snake arena — eat orbs, evolve through 5 forms, outplay AI serpents." />
   <meta name="twitter:image" content="https://neon-serpent-arena-game.vercel.app/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>" />
-  <link rel="stylesheet" href="css/style.css?v=2.11.0" />
+  <link rel="stylesheet" href="css/style.css?v=2.12.0" />
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -184,7 +184,7 @@
         <li><b>Goals to chase</b> — a 12-step Challenges ladder and daily challenges, with reward skins for the dedicated.</li>
         <li><b>Endless progression</b> — lifetime XP with uncapped levels; every run counts forever.</li>
         <li><b>Player-first controls</b> — pause, four arena intensities (incl. a gentle Kid Mode), sound &amp; FX toggles.</li>
-        <li><b>100% static &amp; offline</b> — no servers, no ads, no tracking, no downloads. One tiny page.</li>
+        <li><b>Static &amp; private</b> — no game servers, no ads, no accounts, no downloads; just privacy-friendly, cookieless, <em>anonymous</em> visit counts (Vercel) so we know people are playing. Your scores stay on your device.</li>
       </ul>
       <p class="about-text small" id="about-version"></p>
       <a class="coffee-btn" href="https://buymeacoffee.com/rohit.wadhwa" target="_blank" rel="noopener noreferrer">☕ Made with love — buy me a coffee</a>
@@ -238,6 +238,20 @@
 
   <button id="update-pill" class="hidden">🔄 UPDATE AVAILABLE — TAP TO REFRESH</button>
 
-  <script src="js/game.js?v=2.11.0"></script>
+  <script src="js/game.js?v=2.12.0"></script>
+
+  <!-- Vercel Web Analytics — privacy-friendly, cookieless, anonymous visit
+       counts so we can see people are playing. Loaded ONLY on the live https
+       site: never on file://, localhost, or the standalone bundle, so offline
+       play and the shareable build stay 100% self-contained (no requests). -->
+  <script>
+    if (location.protocol === "https:" && location.hostname !== "localhost") {
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      var _va = document.createElement("script");
+      _va.defer = true;
+      _va.src = "/_vercel/insights/script.js";
+      document.head.appendChild(_va);
+    }
+  </script>
 </body>
 </html>

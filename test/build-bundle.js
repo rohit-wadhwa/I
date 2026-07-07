@@ -18,10 +18,13 @@ const js = fs.readFileSync(path.join(ROOT, "js", "game.js"), "utf8");
 
 let bundle = html
   .replace(/<link rel="stylesheet" href="css\/style\.css\?v=[^"]*"\s*\/>/, "<style>\n" + css + "\n</style>")
-  .replace(/<script src="js\/game\.js\?v=[^"]*"><\/script>/, "<script>\n" + js + "\n</script>");
+  .replace(/<script src="js\/game\.js\?v=[^"]*"><\/script>/, "<script>\n" + js + "\n</script>")
+  // Strip the Vercel Web Analytics injector — the bundle is the standalone /
+  // offline build and must stay 100% self-contained (no external requests).
+  .replace(/\s*<!-- Vercel Web Analytics[\s\S]*?_vercel\/insights[\s\S]*?<\/script>/, "");
 
-if (/href="css\/style\.css/.test(bundle) || /src="js\/game\.js/.test(bundle)) {
-  console.error("✗ bundle still references external css/js — inlining failed");
+if (/href="css\/style\.css/.test(bundle) || /src="js\/game\.js/.test(bundle) || /_vercel\/insights/.test(bundle)) {
+  console.error("✗ bundle still references external css/js/analytics — inlining failed");
   process.exit(1);
 }
 
