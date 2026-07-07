@@ -6,6 +6,10 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.12.2
+- **Fix: the leaderboard "froze" at 520** (many players reported "score stuck" / chaos) — v2.12.1 ranked the board by body **length**, which is hard-capped at 520, so every big snake maxed out and the top of the board became a wall of identical, unmoving "520"s. The board now ranks by **mass = length + overflow**, an **uncapped** measure that keeps climbing past the cap, so the biggest serpents stay differentiated and the numbers keep ticking. (Your personal **score** in the top-left panel was never actually stuck — it's separate from the board.)
+- **Hardening (code-reviewed):** all length changes now route through shared `grow`/`shrink` helpers that keep mass in sync, fixing edge cases a review caught: overflow banked exactly when you cross the cap, prey/feast/boss growth counting at the cap, boosting/phantom-drain **spending** banked mass (so you can't sit at rank #1 with a boosted-away body), and Soul Swap targeting the truly biggest serpent. Added unit + integration tests so the "frozen wall" and these edge cases can't come back.
+
 ## 2.12.1
 - **Leaderboard now ranks by size, not score** (fixes a confusing "small snake is #1" report) — the arena board is retitled **"Biggest serpents"** and ranks by length, so it means *who's the biggest*, like slither.io. Ranking by score had become misleading now that the combo multiplier inflates only *your* score (bots don't combo), letting a tiny snake top the board over much larger ones. Your combo-boosted **score stays your personal points** in the score panel (and still drives XP / personal best); the board is arena dominance. The crown and ghost-mode camera now follow the biggest serpent too.
 

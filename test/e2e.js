@@ -239,10 +239,10 @@ async function startGame(page) {
   // one. The board is "biggest serpents"; the number shown is length.
   console.log("\nLeaderboard ranks by size");
   await page.evaluate(() => {
-    __ns.player.len = 40; __ns.player.scorePoints = 99999;    // small but rich
+    __ns.player.len = 40; __ns.player.over = 0; __ns.player.scorePoints = 99999;   // small but rich
     const bots = __ns.snakes.filter(s => s !== __ns.player && s.isBot);
-    bots.forEach(b => { b.len = 20; b.scorePoints = 100; });  // shrink the field
-    if (bots[0]) bots[0].len = 400;                           // one huge but poor
+    bots.forEach(b => { b.len = 20; b.over = 0; b.scorePoints = 100; });           // shrink the field
+    if (bots[0]) bots[0].len = 400;                                                // one huge but poor
   });
   await page.waitForTimeout(700);   // let the throttled leaderboard re-render
   const lb = JSON.parse(await page.evaluate(() => {
@@ -260,6 +260,58 @@ async function startGame(page) {
   check("board shows a size header, not 'Leaderboard'", /biggest/i.test(lb.header), lb.header);
   check("the bigger serpent outranks the tiny high-score player", bigIdx >= 0 && meIdx >= 0 && bigIdx < meIdx, JSON.stringify(lb.items));
   check("player's board number is its length (~40), not its score", lb.meVal <= 60, "meVal=" + lb.meVal);
+
+  // v2.12.2 regression: at the 520 length cap the board MUST NOT freeze into a
+  // wall of identical "520"s — uncapped `over` keeps the biggest snakes apart.
+  await page.evaluate(() => {
+    const bots = __ns.snakes.filter(s => s !== __ns.player && s.isBot);
+    // three snakes all maxed at length 520 but with different overflow mass
+    __ns.player.len = 520; __ns.player.over = 300;
+    if (bots[0]) { bots[0].len = 520; bots[0].over = 120; }
+    if (bots[1]) { bots[1].len = 520; bots[1].over = 0; }
+    bots.slice(2).forEach(b => { b.len = 30; b.over = 0; });
+  });
+  await page.waitForTimeout(700);
+  const capLb = JSON.parse(await page.evaluate(() => {
+    const vals = [...document.querySelectorAll("#leaderboard-list li .lb-score")]
+      .slice(0, 3).map(e => parseInt(e.textContent.replace(/,/g, ""), 10));
+    return JSON.stringify(vals);
+  }));
+  check("capped snakes don't all show 520 (no frozen wall)", capLb.some(v => v > 520), JSON.stringify(capLb));
+  check("top capped snakes have distinct board numbers", new Set(capLb).size === capLb.length, JSON.stringify(capLb));
+
+  // and eating past the cap keeps the number climbing
+  const climb = JSON.parse(await page.evaluate(() => {
+    __ns.player.len = 520; __ns.player.over = 0;
+    const before = __ns.player.len + __ns.player.over;
+    const h = __ns.player.head;
+    for (let i = 0; i < 15; i++) __ns.spawnDropFood(h.x, h.y, 4, 200);
+    return JSON.stringify({ before });
+  }));
+  await page.waitForTimeout(400);
+  const after = await page.evaluate(() => __ns.player.len + (__ns.player.over || 0));
+  check("mass keeps growing past the 520 cap when eating", after > climb.before, "before=" + climb.before + " after=" + after);
+
+  // v2.12.2 code-review fixes: grow/shrink keep mass = len + over in sync.
+  const gs = JSON.parse(await page.evaluate(() => {
+    const p = __ns.player;
+    // (a) crossing the cap in one bite banks the EXACT overflow (was lost)
+    p.len = 510; p.over = 0; __ns.growSnake(p, 30);
+    const cross = { len: p.len, over: p.over };            // expect len 520, over 20
+    // (b) growing while already capped banks it all (prey/feast path)
+    p.len = 520; p.over = 0; __ns.growSnake(p, 16);
+    const capped = { len: p.len, over: p.over };           // expect len 520, over 16
+    // (c) shrinking spends the banked reserve FIRST, then the body
+    p.len = 520; p.over = 100; __ns.shrinkSnake(p, 40, 10);
+    const shrink1 = { len: p.len, over: p.over };           // expect len 520, over 60
+    __ns.shrinkSnake(p, 80, 10);                            // 60 from over, 20 from len
+    const shrink2 = { len: p.len, over: p.over };           // expect len 500, over 0
+    return JSON.stringify({ cross, capped, shrink1, shrink2 });
+  }));
+  check("growth across the cap banks exact overflow", gs.cross.len === 520 && gs.cross.over === 20, JSON.stringify(gs.cross));
+  check("growth while capped banks it all (prey/feast)", gs.capped.len === 520 && gs.capped.over === 16, JSON.stringify(gs.capped));
+  check("shrink spends banked reserve before body", gs.shrink1.over === 60 && gs.shrink1.len === 520, JSON.stringify(gs.shrink1));
+  check("shrink drops to body once reserve is gone", gs.shrink2.over === 0 && gs.shrink2.len === 500, JSON.stringify(gs.shrink2));
 
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");

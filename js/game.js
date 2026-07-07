@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.12.1";
+  const VERSION = "2.12.2";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -576,6 +576,29 @@
     return cols[((i / 3) | 0) % cols.length];
   }
 
+  // ---------- Size / mass ----------
+  // A serpent's true size is `mass = len + over`. `len` is the VISIBLE body,
+  // hard-capped at MAX_LEN (520). `over` is uncapped "banked" growth beyond a
+  // full body — it powers the size leaderboard so the biggest snakes stay
+  // differentiated at the cap instead of all freezing at 520. grow()/shrink()
+  // keep the two in sync as ONE quantity: every gain spills past the cap into
+  // `over`; every loss spends the banked reserve FIRST, then the visible body.
+  // Route ALL length changes through these so mass always tracks the snake.
+  const MAX_LEN = 520;
+  function growSnake(s, amount) {
+    if (!(amount > 0)) return;
+    s.len += amount;
+    if (s.len > MAX_LEN) { s.over += s.len - MAX_LEN; s.len = MAX_LEN; }
+  }
+  function shrinkSnake(s, amount, floor) {
+    if (!(amount > 0)) return;
+    const fromOver = Math.min(s.over || 0, amount);
+    s.over -= fromOver;
+    amount -= fromOver;
+    if (amount > 0) s.len = Math.max(floor, s.len - amount);
+  }
+  function snakeMass(s) { return s.len + (s.over || 0); }
+
   // ---------- Food ----------
   // Spatial hash so eat-checks stay cheap with hundreds of orbs.
   const CELL = 160;
@@ -701,6 +724,8 @@
       this.dir = Math.random() * Math.PI * 2;
       this.targetDir = this.dir;
       this.len = START_LEN;            // fractional target length
+      this.over = 0;                   // growth "eaten" past the 520 length cap
+                                       // (uncapped) — powers the size leaderboard
       this.boosting = false;
       this.dead = false;
       this.kills = 0;
@@ -755,7 +780,7 @@
         speed = BOOST_SPEED * 1.08;
       } else if (this.boosting && this.len > MIN_BOOST_LEN) {
         speed = BOOST_SPEED;
-        this.len -= BOOST_DRAIN * dt;
+        shrinkSnake(this, BOOST_DRAIN * dt, MIN_BOOST_LEN);   // burns banked mass first, then body
         this.boostDrop += dt;
         if (this.boostDrop > 0.16) {
           this.boostDrop = 0;
@@ -838,7 +863,7 @@
         const d2 = dist2(h.x, h.y, f.x, f.y);
         const eatR = this.radius + f.r;
         if (d2 < eatR * eatR) {
-          this.len = Math.min(this.len + f.value, 520);
+          growSnake(this, f.value);   // grows len, banking any overflow past the cap
           this.scorePoints += f.value * 10 * (this === player ? comboMult() : 1);
           this.orbsEaten++;
           if (this === player) {
@@ -1005,6 +1030,7 @@
       if (this.isBoss && this.hp > 1) {
         this.hp--;
         this.invuln = 1.6;
+        this.over *= 0.78;   // shrink banked mass in step with the body
         this.len = Math.max(60, this.len * 0.78);
         spawnBurst(this.head.x, this.head.y, this.hue);
         showToast("BOSS HIT — " + this.hp + " HP LEFT", "#ffd75e");
@@ -1055,7 +1081,7 @@
         if (killer === player) {
           stats.bossKills++;
           player.bossKills = (player.bossKills || 0) + 1;   // per-run, for challenges
-          player.len = Math.min(player.len + 30, 520);
+          growSnake(player, 30);
           player.scorePoints += 300;   // slaying a boss pays even at max size
           checkUnlocks();
           savePrefs(prefs);
@@ -1156,7 +1182,7 @@
       for (let i = 0; i < phantom.segs.length; i += 2) {
         const seg = phantom.segs[i];
         if (dist2(h.x, h.y, seg.x, seg.y) < rr) {
-          s.len = Math.max(START_LEN, s.len - 14 * dt);
+          shrinkSnake(s, 14 * dt, START_LEN);   // smooth drain (reserve first, then body)
           if (s === player) audio.drain();
           break;
         }
@@ -1219,7 +1245,7 @@
     if (k === "overdrive") snake.fx.overdrive = 6;
     else if (k === "magnet") snake.fx.magnet = 10;
     else if (k === "shield") snake.shieldCharge = true;
-    else if (k === "feast") { snake.len = Math.min(snake.len + 20, 520); snake.scorePoints += 200; }
+    else if (k === "feast") { growSnake(snake, 20); snake.scorePoints += 200; }
     else if (k === "chameleon") recolorSnake(snake);
     else if (k === "soulswap") soulSwap(snake);
     if (snake === player) audio.powerup();
@@ -1230,24 +1256,25 @@
   // yours). Player-favouring: when a bot grabs it, they just grow a little,
   // so a lucky bot can never grief you out of your Leviathan.
   function soulSwap(snake) {
-    if (snake !== player) { snake.len = Math.min(snake.len + 15, 520); return; }
+    if (snake !== player) { growSnake(snake, 15); return; }
     let target = null, best = -1;
     for (const o of snakes) {
       if (o === snake || o.dead || o.isBoss || o.phantom || o.invuln > 0) continue;
       const d2 = dist2(snake.head.x, snake.head.y, o.head.x, o.head.y);
-      if (d2 < 1000 * 1000 && o.len > best) { best = o.len; target = o; }
+      if (d2 < 1000 * 1000 && snakeMass(o) > best) { best = snakeMass(o); target = o; }
     }
-    if (target && target.len > snake.len + 8) {
-      const mine = snake.len;
-      snake.len = Math.min(target.len, 520);
-      target.len = Math.max(START_LEN, mine);
+    if (target && snakeMass(target) > snakeMass(snake) + 8) {
+      // Swap the whole (len, over) pair — you steal their true size, they take yours.
+      const mine = snake.len, mineOver = snake.over || 0;
+      snake.len = target.len; snake.over = target.over || 0;
+      target.len = mine; target.over = mineOver;
       target.invuln = Math.max(target.invuln, 1);   // brief grace for the victim
       spawnBurst(snake.head.x, snake.head.y, 285);
       spawnBurst(target.head.x, target.head.y, 285);
       showToast("👿 SOUL SWAP — you STOLE " + target.name + "'s size!", "#c86bff");
       audio.soulswap();
     } else {
-      snake.len = Math.min(snake.len + 15, 520);
+      growSnake(snake, 15);
       showToast("👿 No bigger soul near — you grew a little", "#c86bff");
       audio.soulswap();
     }
@@ -1383,7 +1410,7 @@
     const t = c.type || PREY_TYPES[0];
     spawnBurst(c.x, c.y, t.gold ? 48 : 22);
     if (s === player) {
-      player.len = Math.min(player.len + t.len, 520);
+      growSnake(player, t.len);
       const gain = t.score * comboMult();
       player.scorePoints += gain;
       player.orbsEaten++;
@@ -1394,7 +1421,7 @@
       showToast(t.emoji + " " + (t.gold ? "JACKPOT — " : "TASTY ") + t.name.toUpperCase() + "!  +" + t.score,
         t.gold ? "#ffd75e" : "#ffca6b");
     } else {
-      s.len = Math.min(s.len + Math.round(t.len * 0.6), 520);   // bots get a modest nibble
+      growSnake(s, Math.round(t.len * 0.6));   // bots get a modest nibble
     }
   }
   function updateCritters(dt) {
@@ -2235,12 +2262,17 @@
       if (s.dead && (s.isBoss || s.phantom)) snakes.splice(i, 1);
     }
 
-    // Rank by SIZE (length), not score — a leaderboard should mean "who's the
+    // Rank by SIZE ("mass"), not score — a leaderboard should mean "who's the
     // biggest serpent in the arena", like slither.io. Ranking by score was
     // confusing now that the combo multiplier inflates the player's score
     // (bots don't combo), letting a tiny snake top the board. Your score stays
     // your personal points in the score panel; the board is arena dominance.
-    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => (b.len - a.len) || (b.score - a.score));
+    //
+    // IMPORTANT: mass = len + over (UNCAPPED). Ranking by raw `len` alone froze
+    // the board once several snakes hit the 520 length cap — a wall of identical
+    // "520"s that never moved (looked broken). `over` keeps climbing past the
+    // cap so the biggest snakes still differ and the numbers keep ticking.
+    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => snakeMass(b) - snakeMass(a));
     leader = ranked.find(s => !s.isBoss) || null;
     const myRank = player ? ranked.indexOf(player) + 1 : 0;
     if (myRank > 0 && myRank < bestRank) bestRank = myRank;
@@ -2253,7 +2285,7 @@
       nm.textContent = s.name;
       const sc = document.createElement("span");
       sc.className = "lb-score";
-      sc.textContent = Math.round(s.len).toLocaleString();   // size, not score
+      sc.textContent = Math.round(snakeMass(s)).toLocaleString();   // size (mass), not score
       li.append(nm, sc);
       lbList.appendChild(li);
     });
@@ -3037,6 +3069,9 @@
     spawnCritter,
     updateCritters,
     killCueIntensity,
+    growSnake,
+    shrinkSnake,
+    snakeMass,
     combo,
     bumpCombo,
     comboMult,
