@@ -234,6 +234,33 @@ async function startGame(page) {
   }));
   check("multiplier applies to score (400 × ×3 = 1200)", mtest.gain === 1200, JSON.stringify(mtest));
 
+  // ---- Leaderboard ranks by SIZE, not score (v2.12.1) ----
+  // A small snake with a huge (combo-inflated) score must NOT outrank a bigger
+  // one. The board is "biggest serpents"; the number shown is length.
+  console.log("\nLeaderboard ranks by size");
+  await page.evaluate(() => {
+    __ns.player.len = 40; __ns.player.scorePoints = 99999;    // small but rich
+    const bots = __ns.snakes.filter(s => s !== __ns.player && s.isBot);
+    bots.forEach(b => { b.len = 20; b.scorePoints = 100; });  // shrink the field
+    if (bots[0]) bots[0].len = 400;                           // one huge but poor
+  });
+  await page.waitForTimeout(700);   // let the throttled leaderboard re-render
+  const lb = JSON.parse(await page.evaluate(() => {
+    const items = [...document.querySelectorAll("#leaderboard-list li")].map(li => ({
+      name: li.querySelector("span").textContent,
+      val: parseInt(li.querySelector(".lb-score").textContent.replace(/,/g, ""), 10),
+      me: li.classList.contains("me")
+    }));
+    const header = document.querySelector("#leaderboard .hud-label").textContent;
+    return JSON.stringify({ items, header, meVal: (items.find(i => i.me) || {}).val });
+  }));
+  const bigger = lb.items.find(i => i.val >= 400);
+  const meIdx = lb.items.findIndex(i => i.me);
+  const bigIdx = bigger ? lb.items.indexOf(bigger) : -1;
+  check("board shows a size header, not 'Leaderboard'", /biggest/i.test(lb.header), lb.header);
+  check("the bigger serpent outranks the tiny high-score player", bigIdx >= 0 && meIdx >= 0 && bigIdx < meIdx, JSON.stringify(lb.items));
+  check("player's board number is its length (~40), not its score", lb.meVal <= 60, "meVal=" + lb.meVal);
+
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");
   const ch = JSON.parse(await page.evaluate(() => {

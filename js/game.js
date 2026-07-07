@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.12.0";
+  const VERSION = "2.12.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -2235,7 +2235,12 @@
       if (s.dead && (s.isBoss || s.phantom)) snakes.splice(i, 1);
     }
 
-    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => b.score - a.score);
+    // Rank by SIZE (length), not score — a leaderboard should mean "who's the
+    // biggest serpent in the arena", like slither.io. Ranking by score was
+    // confusing now that the combo multiplier inflates the player's score
+    // (bots don't combo), letting a tiny snake top the board. Your score stays
+    // your personal points in the score panel; the board is arena dominance.
+    const ranked = snakes.filter(s => !s.dead && !s.phantom).sort((a, b) => (b.len - a.len) || (b.score - a.score));
     leader = ranked.find(s => !s.isBoss) || null;
     const myRank = player ? ranked.indexOf(player) + 1 : 0;
     if (myRank > 0 && myRank < bestRank) bestRank = myRank;
@@ -2248,7 +2253,7 @@
       nm.textContent = s.name;
       const sc = document.createElement("span");
       sc.className = "lb-score";
-      sc.textContent = s.score.toLocaleString();
+      sc.textContent = Math.round(s.len).toLocaleString();   // size, not score
       li.append(nm, sc);
       lbList.appendChild(li);
     });

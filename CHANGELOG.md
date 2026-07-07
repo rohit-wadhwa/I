@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.12.1
+- **Leaderboard now ranks by size, not score** (fixes a confusing "small snake is #1" report) — the arena board is retitled **"Biggest serpents"** and ranks by length, so it means *who's the biggest*, like slither.io. Ranking by score had become misleading now that the combo multiplier inflates only *your* score (bots don't combo), letting a tiny snake top the board over much larger ones. Your combo-boosted **score stays your personal points** in the score panel (and still drives XP / personal best); the board is arena dominance. The crown and ghost-mode camera now follow the biggest serpent too.
+
 ## 2.12.0
 - **Anonymous "people are playing" analytics** — added **Vercel Web Analytics** (privacy-friendly, cookieless, anonymous visit counts) so we can finally see how many people play. It loads **only on the live https site** — never on `file://`, `localhost`, or the standalone shareable bundle — so offline play stays 100% self-contained with zero external requests. No scores or personal data are collected (kids play this); your scores still live only on your device. *Enable it once in the Vercel dashboard: Project → Analytics → Enable.*
 
