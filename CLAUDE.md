@@ -57,8 +57,8 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
 - It uses the preinstalled Chromium at `/opt/pw-browsers/chromium` when present.
 - `window.__ns` exposes test hooks: `player, snakes, boss, phantom, foods, shards,
   critters, spawnBoss, spawnPhantom, spawnShard, spawnCritter, updateCritters,
-  applyPowerup, spawnDropFood, killCueIntensity, stats, unlocked, CHALLENGES,
-  challengesDone, checkChallenges`.
+  applyPowerup, spawnDropFood, killCueIntensity, combo, bumpCombo, comboMult,
+  updateCombo, stats, unlocked, CHALLENGES, challengesDone, checkChallenges`.
   Note `player.score` is a getter — set `player.scorePoints` to fake a score.
 - Known harness quirk: Playwright's `page.evaluate` sometimes throws
   "Right-hand side of 'instanceof' is not an object" when RETURNING objects in
@@ -66,10 +66,10 @@ Live: https://neon-serpent-arena-game.vercel.app · Owner: Rohit Wadhwa.
   `document.title` and read with `page.title()`) — never a live object.
 
 ## Feature map (as of v2.9.0)
-Evolution (5 tiers) · boost (burns mass) · power-ups (⚡ overdrive, 🧲 magnet,
-🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) · bosses (3–6 HP, scale with
-score, green-anaconda look) · phantom (avoid, drains) · running prey (🐀 rats
-that flee, caught for a bonus) · Cosmic Shards + secret skins + Konami/logo-tap
+Evolution (5 tiers) · boost (burns mass) · combo & score multiplier (×1→×5) ·
+power-ups (⚡ overdrive, 🧲 magnet, 🛡️ shield, 💠 feast, 🦎 chameleon, 👿 soul-swap) ·
+bosses (3–6 HP, scale with score, green-anaconda look) · phantom (avoid, drains) ·
+running prey (🐀 rats that flee, caught for a bonus) · Cosmic Shards + secret skins + Konami/logo-tap
 cheat · 16 skins · endless XP levels · daily challenges · 12-goal Challenges
 ladder (Vanguard/Champion reward skins) · late-game escalation (heat) ·
 synthesized hiss/SFX (Web Audio, no files) · ghost/watch mode · 4 arena intensities

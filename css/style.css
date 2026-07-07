@@ -53,6 +53,50 @@ html, body {
   text-shadow: 0 0 12px rgba(77, 227, 255, 0.6);
 }
 
+/* Combo & multiplier chip */
+#combo-chip {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#combo-chip.hidden { display: none; }
+#combo-mult {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffd75e;
+  text-shadow: 0 0 12px rgba(255, 200, 60, 0.7);
+  animation: combo-pop 0.25s ease-out;
+}
+#combo-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+#combo-bar {
+  flex: 1 1 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#combo-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ffd75e, #ff8a3d);
+  transition: width 0.1s linear;
+}
+#combo-chip.fire #combo-mult {
+  color: #ff8a3d;
+  text-shadow: 0 0 16px rgba(255, 120, 40, 0.9);
+  animation: combo-fire 0.5s ease-in-out infinite alternate;
+}
+#combo-chip.fire #combo-fill { background: linear-gradient(90deg, #ff8a3d, #ff3d6d); }
+@keyframes combo-pop { from { transform: scale(1.5); } to { transform: scale(1); } }
+@keyframes combo-fire { from { transform: scale(1); } to { transform: scale(1.12); } }
+
 .hud-label {
   font-size: 11px;
   font-weight: 700;

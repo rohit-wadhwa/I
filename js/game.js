@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.9.2";
+  const VERSION = "2.10.0";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -456,6 +456,12 @@
       this.tone(1320, 0.07, { type: "square", vol: 0.08, delay: 0.06, slide: 260 });
       this.hiss(0.07);
     },
+    // Rising chime when the combo multiplier ticks up a tier.
+    combo(m) {
+      const base = 480 + m * 130;
+      this.tone(base, 0.09, { type: "triangle", vol: 0.15 });
+      this.tone(base * 1.5, 0.09, { type: "triangle", vol: 0.11, delay: 0.05 });
+    },
 
     eat() {
       const now = performance.now();
@@ -828,9 +834,9 @@
         const eatR = this.radius + f.r;
         if (d2 < eatR * eatR) {
           this.len = Math.min(this.len + f.value, 520);
-          this.scorePoints += f.value * 10;
+          this.scorePoints += f.value * 10 * (this === player ? comboMult() : 1);
           this.orbsEaten++;
-          if (this === player) audio.eat();
+          if (this === player) { bumpCombo(1); audio.eat(); }
           removeFood(f);
         } else if (d2 < magnet * magnet) {
           // Orbs accelerate toward the mouth — gentle at the edge of the
@@ -1008,6 +1014,7 @@
       }
       this.dead = true;
       if (killer) killer.kills++;
+      if (killer === player && this !== player) bumpCombo(5);   // a kill supercharges the combo
 
       // Body bursts into orbs worth most of its mass. Bigger serpents
       // shatter into more, fatter orbs — a visibly richer feast.
@@ -1356,8 +1363,9 @@
     spawnBurst(c.x, c.y, t.gold ? 48 : 22);
     if (s === player) {
       player.len = Math.min(player.len + t.len, 520);
-      player.scorePoints += t.score;
+      player.scorePoints += t.score * comboMult();
       player.orbsEaten++;
+      bumpCombo(3);   // a catch is worth a few combo points
       audio.critter();
       showToast(t.emoji + " " + (t.gold ? "JACKPOT — " : "TASTY ") + t.name.toUpperCase() + "!  +" + t.score,
         t.gold ? "#ffd75e" : "#ffca6b");
@@ -1445,6 +1453,39 @@
     }
   }
 
+  // ---------- Combo & multiplier ----------
+  // The moment-to-moment greed loop: eating, catching prey and killing rivals
+  // in quick succession builds a combo and a score multiplier (×1 → ×5). Stop
+  // feeding and it lapses. Rewards flow/aggression, stays pure skill (no pay).
+  const combo = { count: 0, timer: 0, mult: 1, best: 0 };
+  const COMBO_WINDOW = 2.6;   // seconds of grace before the combo lapses
+  function comboMult() { return combo.mult; }
+  function bumpCombo(n) {
+    combo.count += n;
+    combo.timer = COMBO_WINDOW;
+    const m = Math.min(5, 1 + Math.floor(combo.count / 5));
+    if (m > combo.mult) {
+      combo.mult = m;
+      audio.combo(m);
+      if (m >= 4) showToast("🔥 ON FIRE — ×" + m + " COMBO!", "#ff8a3d");
+    }
+    if (combo.count > combo.best) combo.best = combo.count;
+  }
+  function resetCombo() { combo.count = 0; combo.timer = 0; combo.mult = 1; combo.best = 0; }
+  function updateCombo(dt) {
+    if (combo.timer > 0) { combo.timer -= dt; if (combo.timer <= 0) { combo.count = 0; combo.mult = 1; } }
+  }
+  function renderCombo() {
+    const chip = el("combo-chip");
+    if (!chip) return;
+    if (combo.count < 3 || !player || player.dead) { chip.classList.add("hidden"); return; }
+    chip.classList.remove("hidden");
+    chip.classList.toggle("fire", combo.mult >= 4);
+    el("combo-mult").textContent = "×" + combo.mult;
+    el("combo-label").textContent = combo.count + " COMBO";
+    el("combo-fill").style.width = Math.max(0, Math.min(1, combo.timer / COMBO_WINDOW)) * 100 + "%";
+  }
+
   // ---------- Game state ----------
   let snakes = [];
   let player = null;
@@ -1484,6 +1525,8 @@
     shardTimer = spectating ? 30 : 45;
     critters.length = 0;
     critterTimer = rand(8, 16);
+    resetCombo();
+    el("combo-chip").classList.add("hidden");
     buildStars();
 
     if (spectating) {
@@ -1587,6 +1630,7 @@
     el("final-score").textContent = score.toLocaleString();
     el("final-length").textContent = Math.floor(player.len);
     el("final-kills").textContent = player.kills;
+    el("final-combo").textContent = combo.best >= 3 ? combo.best + "×" : "-";
     el("final-rank").textContent = bestRank === 99 ? "-" : "#" + bestRank;
     el("new-best-badge").classList.toggle("hidden", !isNewBest);
 
@@ -2190,6 +2234,7 @@
       updatePowerups(dt);
       if (player) updateShards(dt);   // shards only tick during real play
       updateCritters(dt);
+      if (player) updateCombo(dt);
 
       // Kid Mode ('calm') has no bosses or phantom at all.
       const calm = DIFFS[difficulty].calm;
@@ -2229,6 +2274,7 @@
 
       scoreValue.textContent = (player ? player.score : focus ? focus.score : 0).toLocaleString();
       if (player && !player.dead) runPeakLen = Math.max(runPeakLen, player.len);
+      renderCombo();
 
       // Escalation milestones — signal that the arena is getting harder.
       // (Not in Kid Mode, which is deliberately calm.)
@@ -2916,6 +2962,10 @@
     spawnCritter,
     updateCritters,
     killCueIntensity,
+    combo,
+    bumpCombo,
+    comboMult,
+    updateCombo,
     stats,
     unlocked,
     CHALLENGES,

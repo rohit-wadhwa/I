@@ -6,6 +6,9 @@ git history; this file is the human-readable summary.
 The version is shown in-game (bottom-left of the HUD), on the menu footer, and
 baked into shared screenshots and result cards — quote it when reporting a bug.
 
+## 2.10.0
+- **Combo & multiplier — the "just one more" hook** — eating orbs, catching prey and killing rivals in quick succession now builds a **combo** and a rising **score multiplier (×1 → ×5)**. Let it lapse (2.6s without feeding) and it resets. A glowing HUD chip shows your multiplier + a decay bar, hitting an **🔥 ON FIRE** state at ×4. This makes the moment-to-moment loop rewarding — once you're big, you hunt combos for a massive score, so every second matters. Your **best combo** is now a death-screen stat. Stays 100% skill-based (no pay-to-win), the thing that keeps these games fair and moreish.
+
 ## 2.9.2
 - **Prey is now actually catchable** (bug fix) — the prey flee-speed was set on the wrong scale (340–476 px/s) while the player only moves 132 px/s (236 boosting), so prey literally outran a boosting snake and could never be caught. Flee speeds are retuned **below boost speed**, prey now **tires after sprinting** (so a determined chase closes in), and the catch hitbox got a small lunge window. Verified: a boosting player catches even the fastest rabbit/golden-rat in ~4s (grub ~1s). Added a test that fails if any prey is ever faster than a boosting pursuer.
 

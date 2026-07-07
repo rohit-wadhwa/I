@@ -206,6 +206,28 @@ async function startGame(page) {
   check("fastest prey is catchable while boosting", chase.caught === true, JSON.stringify(chase));
   check("prey caught in a reasonable chase (<8s)", chase.caught && chase.seconds < 8, JSON.stringify(chase));
 
+  // ---- Combo & multiplier (v2.10.0) ----
+  console.log("\nCombo & multiplier");
+  const cb = JSON.parse(await page.evaluate(() => {
+    __ns.combo.count = 0; __ns.combo.mult = 1; __ns.combo.timer = 0;
+    const tiers = [];
+    for (const target of [5, 10, 15, 20, 25]) { __ns.bumpCombo(target - __ns.combo.count); tiers.push(__ns.comboMult()); }
+    const capped = __ns.comboMult();
+    for (let i = 0; i < 200; i++) __ns.updateCombo(0.05);   // let the window lapse
+    return JSON.stringify({ tiers: tiers.join(","), capped, afterLapse: __ns.comboMult() });
+  }));
+  check("multiplier climbs ×2→×5 with the combo", cb.tiers === "2,3,4,5,5", cb.tiers);
+  check("multiplier caps at ×5", cb.capped === 5);
+  check("combo lapses back to ×1", cb.afterLapse === 1);
+  // score multiplication: identical food eaten at ×1 vs ×3
+  await page.evaluate(() => { __ns.player.scorePoints = 0; __ns.combo.mult = 1; __ns.combo.timer = 10; const h = __ns.player.head; __ns.spawnDropFood(h.x, h.y, 5, 200); });
+  await page.waitForTimeout(180);
+  const g1 = await page.evaluate(() => __ns.player.score);
+  await page.evaluate(() => { __ns.player.scorePoints = 0; __ns.combo.mult = 3; __ns.combo.timer = 10; const h = __ns.player.head; __ns.spawnDropFood(h.x, h.y, 5, 200); });
+  await page.waitForTimeout(180);
+  const g3 = await page.evaluate(() => __ns.player.score);
+  check("eating applies the multiplier (×3 ≈ 3× score)", g1 > 0 && g3 === g1 * 3, "g1=" + g1 + " g3=" + g3);
+
   // ---- Challenges ladder (v2.8.0): a run's result marks matching goals done ----
   console.log("\nChallenges ladder");
   const ch = JSON.parse(await page.evaluate(() => {
