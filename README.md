@@ -13,6 +13,18 @@ Make a game that's genuinely **fun to play** — instantly pick-up-and-go for a 
 - **Skill first, no pay-to-win.** Everything is earned by playing; skins are cosmetic. The moment-to-moment loop (combos, catches, near-misses) is the reward.
 - **Polish over piling on.** This game is feature-rich, so we favour making what's there *feel great* — juice, balance, catchability, readability — over bolting on new systems. (We've removed features that fought the core skill.)
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/shot-menu.png" width="49%" alt="Menu — 16-skin collection, level, arena intensity and daily challenge" />
+  <img src="docs/shot-gameplay.png" width="49%" alt="Gameplay — ×3 combo multiplier, running prey (rabbit, frog, golden rat) and Titan evolution" />
+</p>
+<p align="center">
+  <img src="docs/shot-boss.png" width="70%" alt="Boss fight — the green-anaconda Omega Serpent with its HP bar" />
+</p>
+
+<p align="center"><em>Menu · gameplay with the combo multiplier and running prey · the green-anaconda boss</em></p>
+
 ## How it's built
 
 One `requestAnimationFrame` loop drives everything; all state lives in `js/game.js`, the HUD/overlays are plain DOM, and progress persists to `localStorage`.
