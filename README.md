@@ -1,6 +1,6 @@
 # 🐍 Neon Serpent Arena
 
-**v2.14.0** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, chase fleeing prey, dodge rival AI serpents, build a combo multiplier, climb the leaderboard and rise through the rank ladder.
+**v2.14.1** — A fast, glossy-3D, slither-style snake arena game built with **pure HTML, CSS and JavaScript** — no frameworks, no build step, no dependencies. Eat orbs, chase fleeing prey, dodge rival AI serpents, build a combo multiplier, climb the leaderboard and rise through the rank ladder.
 
 Inspired by **snake.io** and **slither.io** — rebuilt from scratch with its own rules (see the in-game **About** screen for the full list of differences).
 

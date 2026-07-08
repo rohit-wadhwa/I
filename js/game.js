@@ -7,7 +7,7 @@
   "use strict";
 
   // ---------- Config ----------
-  const VERSION = "2.14.0";
+  const VERSION = "2.14.1";
   const WORLD_R = 2600;            // arena radius
   const FOOD_COUNT = 620;          // ambient orbs kept in the world (floor)
   const MAX_FOOD = 1300;           // hard ceiling — cull surplus drops beyond this
@@ -154,7 +154,18 @@
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
+  // Self-heal: some mobile viewport changes (toolbar collapse, orientation,
+  // screen-record/PiP) don't reliably fire `resize`, leaving W/H — and the
+  // canvas clear — out of sync with the real size. Re-sync only when something
+  // actually changed (assigning canvas.width wipes the bitmap, so never do it
+  // needlessly). Called once per frame as a cheap guard.
+  function syncCanvasSize() {
+    if (W !== window.innerWidth || H !== window.innerHeight ||
+        DPR !== Math.min(window.devicePixelRatio || 1, 2)) resize();
+  }
   window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", resize);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
   resize();
 
   // ---------- Utils ----------
@@ -2035,8 +2046,17 @@
   }
 
   function drawBackground(time) {
+    // Clear the ENTIRE backing store in raw device pixels, independent of the
+    // logical W/H. If a mobile toolbar collapse / orientation change / screen
+    // recording resized the viewport WITHOUT firing `resize` (so W/H lag the
+    // real canvas size), a `fillRect(0,0,W,H)` clear would only wipe a corner —
+    // letting every past frame pile up (the "fan of arena rings" and smeared
+    // fin/snake trails players reported). Clearing the full bitmap can't miss.
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#05060f";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
     // Distant stars (parallax at half speed).
     ctx.save();
@@ -2503,6 +2523,7 @@
   let lastT = performance.now();
   function frame(now) {
     requestAnimationFrame(frame);
+    syncCanvasSize();   // heal any viewport change a missed `resize` event left behind
     const gap = now - lastT;
     lastT = now;
     // A large gap means the tab was backgrounded / the device slept.

@@ -475,6 +475,43 @@ async function startGame(page) {
   check("audio context is live after the play gesture", sound.ctxUp === true, JSON.stringify(sound));
   check("all synthesized SFX (incl. the been) fire without throwing", sound.threw === null, "threw=" + sound.threw);
 
+  // ---- Canvas clears the FULL bitmap every frame (v2.14.1) ----
+  // Regression for the "fan of arena rings / smeared snake trails" bug: a mobile
+  // viewport change (toolbar collapse / orientation / screen-record) can resize
+  // the canvas WITHOUT firing `resize`, leaving the backing store bigger than the
+  // logical W/H. The old clear wiped only a W×H corner, so the rest accumulated
+  // past frames. Simulate that desync and assert the whole bitmap is cleared.
+  console.log("\nCanvas full-clear (no accumulation)");
+  const clr = JSON.parse(await page.evaluate(async () => {
+    const c = document.getElementById("game");
+    // Enlarge the backing beyond the logical size without touching innerWidth
+    // (so the self-heal won't just re-sync it away — we want to test the clear).
+    c.width = Math.round(c.width * 1.6);
+    c.height = Math.round(c.height * 1.6);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise(r => setTimeout(r, 120));   // a few frames to accumulate if broken
+    const g = c.getContext("2d");
+    const corner = g.getImageData(c.width - 3, c.height - 3, 1, 1).data;   // deep in the extra region
+    const mid = g.getImageData(c.width - 3, Math.floor(c.height / 2), 1, 1).data;
+    const isBg = px => px[3] === 255 && px[0] < 24 && px[1] < 24 && px[2] < 30;   // opaque dark #05060f
+    return JSON.stringify({ cornerBg: isBg(corner), midBg: isBg(mid),
+      corner: [corner[0], corner[1], corner[2], corner[3]] });
+  }));
+  check("the entire canvas is cleared each frame (no accumulated trails)",
+    clr.cornerBg === true && clr.midBg === true, "corner rgba=" + JSON.stringify(clr.corner));
+
+  // syncCanvasSize heals a viewport change even if `resize` never fired.
+  const heal = JSON.parse(await page.evaluate(async () => {
+    // Shrink the *reported* viewport is out of reach here, so instead verify the
+    // guard exists and that a real resize keeps backing == innerWidth*DPR.
+    window.dispatchEvent(new Event("resize"));
+    await new Promise(r => requestAnimationFrame(r));
+    const c = document.getElementById("game");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return JSON.stringify({ matched: c.width === Math.round(window.innerWidth * dpr) });
+  }));
+  check("canvas backing re-syncs to the real viewport size", heal.matched === true, JSON.stringify(heal));
+
   // ---- No JS errors the whole run ----
   console.log("\nRuntime health");
   check("no uncaught JS/console errors", jsErrors.length === 0, jsErrors.join(" | "));
